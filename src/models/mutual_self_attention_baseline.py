@@ -4,17 +4,48 @@ from typing import Any, Dict, Optional
 import torch
 from einops import rearrange
 
-from src.models.attention import TemporalBasicTransformerBlock
-
 from .attention import BasicTransformerBlock
 
 
+# from diffusers.models.attention import BasicTransformerBlock, Attention
+# from src.utils.viz import save_in_colormap
 def torch_dfs(model: torch.nn.Module):
     result = [model]
     for child in model.children():
         result += torch_dfs(child)
     return result
 
+T = torch.Tensor
+
+def expand_first(feat: T, scale=1.,) -> T:
+    b = feat.shape[0]
+    feat_style = torch.stack((feat[0], feat[b // 2])).unsqueeze(1)
+    if scale == 1:
+        feat_style = feat_style.expand(2, b // 2, *feat.shape[1:])
+    else:
+        feat_style = feat_style.repeat(1, b // 2, 1, 1, 1)
+        feat_style = torch.cat([feat_style[:, :1], scale * feat_style[:, 1:]], dim=1)
+    return feat_style.reshape(*feat.shape)
+
+
+def concat_first(feat: T, dim=2, scale=1.) -> T:
+    feat_style = expand_first(feat, scale=scale)
+    return torch.cat((feat, feat_style), dim=dim)
+
+
+def calc_mean_std(feat, eps: float = 1e-5) -> tuple[T, T]:
+    feat_std = (feat.var(dim=-2, keepdims=True) + eps).sqrt()
+    feat_mean = feat.mean(dim=-2, keepdims=True)
+    return feat_mean, feat_std
+
+
+def adain(feat: T) -> T:
+    feat_mean, feat_std = calc_mean_std(feat)
+    feat_style_mean = expand_first(feat_mean)
+    feat_style_std = expand_first(feat_std)
+    feat = (feat - feat_mean) / feat_std
+    feat = feat * feat_style_std + feat_style_mean
+    return feat
 
 class ReferenceAttentionControl:
     def __init__(
@@ -147,23 +178,20 @@ class ReferenceAttentionControl:
                         **cross_attention_kwargs,
                     )
                 if MODE == "read":
+                    bank_fea = self.bank
                     # bank_fea = [
                     #     rearrange(
-                    #         d.repeat(1, 1, 1),
-                    #         "b t c -> (b t) c",
+                    #         d.unsqueeze(1).repeat(1, video_length, 1, 1),
+                    #         "b t l c -> (b t) l c",
                     #     )
                     #     for d in self.bank
                     # ]
-                    bank_fea = [
-                        rearrange(
-                            d.unsqueeze(1).repeat(1, video_length, 1, 1),
-                            "b t l c -> (b t) l c",
-                        )
-                        for d in self.bank
-                    ]
                     modify_norm_hidden_states = torch.cat(
                         [norm_hidden_states] + bank_fea, dim=1
                     )
+                    # if len(bank_fea) != 0:
+                    #     t_bank_fea = torch.Tensor(bank_fea[0])
+                    
                     hidden_states_uc = (
                         self.attn1(
                             norm_hidden_states,
@@ -172,29 +200,29 @@ class ReferenceAttentionControl:
                         )
                         + hidden_states
                     )
-                    
-                    # # # flow
-                    # if norm_hidden_states.shape[1] == 1024:
-                    #     query = self.attn1.to_q(norm_hidden_states)
-                    #     key = self.attn1.to_k(modify_norm_hidden_states)
 
+                    ###  self attention map 
+                    # if len(bank_fea) !=0:
+                    #     query = self.attn1.to_q(norm_hidden_states.detach().float())
+                    #     key = self.attn1.to_k(norm_hidden_states.detach().float())
+                    #     value = self.attn1.to_v(norm_hidden_states.detach().float())
+                    #     # key = self.attn1.to_k(t_bank_fea.detach().float())
+                    #     # value = self.attn1.to_v(t_bank_fea.detach().float())
                     #     query = self.attn1.head_to_batch_dim(query)[0][None]
                     #     key = self.attn1.head_to_batch_dim(key)[0][None]
-                        
-                    #     # Calculate norms for src and tgt atures
+                    #     value = self.attn1.head_to_batch_dim(value)[0][None]
+                    #     # import pdb; pdb.set_trace()
                     #     norm_src_features = torch.linalg.norm(query, dim=2, keepdim=True)
                     #     norm_tgt_features = torch.linalg.norm(key, dim=2, keepdim=True)
-
-                    #     # Compute dot products using einsum
-                    #     sim = torch.einsum("b i d, b j d -> b i j", key, query)
-
-                    #     # Divide by the norms to calculate cosine similarities
-                    #     sim /= norm_tgt_features * norm_src_features.transpose(1, 2)
-                    #     # import os 
-                    #     # import pdb; pdb.set_trace()
-                    #     # lst = os.listdir("./flows") # your directory path
-                    #     # number_files = len(lst)
-                    #     # im.save(f"./flows/flow_image_{number_files}.png")
+                    #     sim = torch.einsum("b i d, b j d -> b i j", key, query) # attn
+                    #     sim /= norm_tgt_features * norm_src_features.transpose(1,2) 
+                    #     sim = torch.softmax(sim, dim=-1) # softmax
+                    #     mean = torch.bmm(sim, norm_src_features)
+                    #     std = torch.sqrt(torch.relu(torch.bmm(sim, norm_src_features ** 2) - mean ** 2))
+                        
+                    #     hidden_states = std * hidden_states + mean
+                        
+                    
                     if do_classifier_free_guidance:
                         hidden_states_c = hidden_states_uc.clone()
                         _uc_mask = uc_mask.clone()
@@ -238,24 +266,6 @@ class ReferenceAttentionControl:
     
                     # Feed-forward
                     hidden_states = self.ff(self.norm3(hidden_states)) + hidden_states
-
-                    # Temporal-Attention
-                    # if self.unet_use_temporal_attention:
-                    #     d = hidden_states.shape[1]
-                    #     hidden_states = rearrange(
-                    #         hidden_states, "(b f) d c -> (b d) f c", f=video_length
-                    #     )
-                    #     norm_hidden_states = (
-                    #         self.norm_temp(hidden_states, timestep)
-                    #         if self.use_ada_layer_norm
-                    #         else self.norm_temp(hidden_states)
-                    #     )
-                    #     hidden_states = (
-                    #         self.attn_temp(norm_hidden_states) + hidden_states
-                    #     )
-                    #     hidden_states = rearrange(
-                    #         hidden_states, "(b d) f c -> (b f) d c", d=d
-                    #     )
 
                     return hidden_states
 
@@ -304,28 +314,33 @@ class ReferenceAttentionControl:
                         torch_dfs(self.unet.mid_block) + torch_dfs(self.unet.up_blocks)
                     )
                     if isinstance(module, BasicTransformerBlock)
-                    or isinstance(module, TemporalBasicTransformerBlock)
                 ]
             elif self.fusion_blocks == "full":
                 attn_modules = [
                     module
                     for module in torch_dfs(self.unet)
                     if isinstance(module, BasicTransformerBlock)
-                    or isinstance(module, TemporalBasicTransformerBlock)
+                ]
+            elif self.fusion_blocks == "up":
+                attn_modules = [
+                    module 
+                    for module in torch_dfs(self.unet.up_blocks)
+                    if isinstance(module, BasicTransformerBlock) 
+                ]
+            elif self.fusion_blocks == "down":
+                attn_modules = [
+                    module 
+                    for module in torch_dfs(self.unet.down_blocks)
+                    if isinstance(module, BasicTransformerBlock) 
                 ]
             attn_modules = sorted(
                 attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
-
             for i, module in enumerate(attn_modules):
                 module._original_inner_forward = module.forward
                 if isinstance(module, BasicTransformerBlock):
                     module.forward = hacked_basic_transformer_inner_forward.__get__(
                         module, BasicTransformerBlock
-                    )
-                if isinstance(module, TemporalBasicTransformerBlock):
-                    module.forward = hacked_basic_transformer_inner_forward.__get__(
-                        module, TemporalBasicTransformerBlock
                     )
 
                 module.bank = []
@@ -339,7 +354,7 @@ class ReferenceAttentionControl:
                     for module in (
                         torch_dfs(self.unet.mid_block) + torch_dfs(self.unet.up_blocks)
                     )
-                    if isinstance(module, TemporalBasicTransformerBlock)
+                    if isinstance(module, BasicTransformerBlock) 
                 ]
                 writer_attn_modules = [
                     module
@@ -353,11 +368,22 @@ class ReferenceAttentionControl:
                 reader_attn_modules = [
                     module
                     for module in torch_dfs(self.unet)
-                    if isinstance(module, TemporalBasicTransformerBlock)
+                    if isinstance(module, BasicTransformerBlock)
                 ]
                 writer_attn_modules = [
                     module
                     for module in torch_dfs(writer.unet)
+                    if isinstance(module, BasicTransformerBlock)
+                ]
+            elif self.fusion_blocks == "up":
+                reader_attn_modules = [
+                    module 
+                    for module in torch_dfs(self.unet.up_blocks)
+                    if isinstance(module, BasicTransformerBlock)
+                ]
+                writer_attn_modules = [
+                    module
+                    for module in torch_dfs(writer.unet.up_blocks)
                     if isinstance(module, BasicTransformerBlock)
                 ]
             reader_attn_modules = sorted(
@@ -366,6 +392,7 @@ class ReferenceAttentionControl:
             writer_attn_modules = sorted(
                 writer_attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
+            
             for r, w in zip(reader_attn_modules, writer_attn_modules):
                 r.bank = [v.clone().to(dtype) for v in w.bank]
                 # w.bank.clear()
@@ -379,14 +406,18 @@ class ReferenceAttentionControl:
                         torch_dfs(self.unet.mid_block) + torch_dfs(self.unet.up_blocks)
                     )
                     if isinstance(module, BasicTransformerBlock)
-                    or isinstance(module, TemporalBasicTransformerBlock)
                 ]
             elif self.fusion_blocks == "full":
                 reader_attn_modules = [
                     module
                     for module in torch_dfs(self.unet)
                     if isinstance(module, BasicTransformerBlock)
-                    or isinstance(module, TemporalBasicTransformerBlock)
+                ]
+            elif self.fusion_blocks == "up":
+                reader_attn_modules = [
+                    module 
+                    for module in torch_dfs(self.unet.up_blocks)
+                    if isinstance(module, BasicTransformerBlock)
                 ]
             reader_attn_modules = sorted(
                 reader_attn_modules, key=lambda x: -x.norm1.normalized_shape[0]

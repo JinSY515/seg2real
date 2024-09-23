@@ -332,11 +332,11 @@ def main(cfg):
     image_enc.requires_grad_(False)
     denoising_unet.requires_grad_(True)
     #  Some top layer parames of reference_unet don't need grad
-    for name, param in reference_unet.named_parameters():
-        if "up_blocks.3" in name:
-            param.requires_grad_(False)
-        else:
-            param.requires_grad_(True)
+    # for name, param in reference_unet.named_parameters():
+    #     if "up_blocks.3" in name:
+    #         param.requires_grad_(False)
+    #     else:
+    #         param.requires_grad_(True)
     reference_unet.requires_grad_(True)
     pose_guider.requires_grad_(True)
     pose_guider.train()
@@ -551,38 +551,31 @@ def main(cfg):
 
 
                 with torch.no_grad():
-                    for batch_idx, (ref_img,  clip_img, seg_json_name, seg_image_name) in enumerate(
+                    for batch_idx, (ref_img, ref_seg, seg_json_name, seg_image_name, ref_seg_image_name) in enumerate(
                         zip(
                             batch["ref_image"],
-                            # batch["ref_seg_image"],
-                            batch["clip_image"],
+                            batch["ref_seg_image"],
+                            # batch["clip_image"],
                             batch["seg_json_name"],
-                            batch["seg_image_name"]
-                            # batch["ref_json_name"]
+                            batch["seg_image_name"],
+                            batch["ref_seg_image_name"]
                         )
                     ):
-                        if uncond_fwd:
-                            clip_image_list.append(torch.zeros_like(clip_img))
-                        else:
-                            clip_image_list.append(clip_img)
                         ref_image_list.append(ref_img)
-                        # ref_seg_image_list.append(ref_seg)
+                        ref_seg_image_list.append(ref_seg)
                         
-                        # with open(seg_json_name, "r") as f:
-                        #     seg_json_data = json.load(f)
-                        # # json_data = json.loads(json_name)
+                        with open(seg_json_name, "r") as f:
+                            seg_json_data = json.load(f)
+                            tgt_object_names = []
+                            ref_object_names = []
+                            
+                            tgt_object_names = seg_json_data[seg_image_name]
+                            ref_object_names = seg_json_data[ref_seg_image_name]
+                          
                         
-                        # tgt_pose_imgname = os.path.basename(batch["seg_image_name"][batch_idx]).replace(".png", ".jpg")
-                        # # result = next((item for item in data if item["name"] == "xxx"), None)
-                        # pose_info = next((item for item in seg_json_data if item["name"] == tgt_pose_imgname), None)
-                        # seg_object_names = []
-                        # for object in pose_info["labels"]:
-                        #     seg_object_names.append(object["category"])
-                        # seg_object_names = list(set(seg_object_names))
-                        # seg_instance_prompt = "A photo of driving scene with"
                         seg_instance_prompt = "A photo of driving scene"
-                        # for object in seg_object_names:
-                        #     seg_instance_prompt += f" {object},"
+                        for object in tgt_object_names:
+                            seg_instance_prompt += f" {object},"
                         seg_text_inputs = tokenizer(
                             seg_instance_prompt,
                             truncation=True,
@@ -594,16 +587,11 @@ def main(cfg):
                         seg_text_embeds = text_encoder(seg_input_ids.to(device="cuda"), return_dict=False)[0]
                         seg_text_embeds_list.append(seg_text_embeds)
 
-                        # with open(ref_json_name, "r") as fr:
-                        #     ref_json_data = json.load(fr)
-                        # ref_object_names = []
-                        # for object in ref_json_data["objects"]:
-                        #     ref_object_names.append(object["label"])
-                        # ref_object_names = list(set(ref_object_names))
-                        # ref_instance_prompt = "A photo of driving scene with"
-                        # for object in ref_object_names:
-                        #     ref_instance_prompt += f" {object},"
+                        
                         ref_instance_prompt="A photo of driving scene"
+                        
+                        for object in ref_object_names:
+                            ref_instance_prompt += f" {object},"
                         ref_text_inputs = tokenizer(
                             ref_instance_prompt,
                             truncation=True,
