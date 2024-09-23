@@ -1,0 +1,6 @@
+checkpoints/
+*.png 
+mlruns/
+__pycache__
+bdd_0906/
+bdd_0830/
