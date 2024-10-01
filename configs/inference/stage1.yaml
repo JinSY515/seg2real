@@ -1,0 +1,48 @@
+base_model_path: "/home/cvlab15/project/siyoon/i2i_control/checkpoints/sd-image-variations-diffusers"
+vae_model_path: "stabilityai/sd-vae-ft-mse" 
+image_encoder_path: "/home/cvlab15/project/siyoon/i2i_control/checkpoints/image_encoder"
+controlnet_path: "/home/cvlab15/project/siyoon/controlnet/checkpoint-5200/controlnet" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+
+net:
+  reference_unet_path: "/mnt/data4/siyoon/i2i_control/bdd_0916/controlnet_checkpoint5200/both_controlnet_transform_revised/all_w_both_textprompt_lr1.0e-5_res512_bs8x2/stage1/reference_unet-53529.pth"
+  denoising_unet_path: "/mnt/data4/siyoon/i2i_control/bdd_0916/controlnet_checkpoint5200/both_controlnet_transform_revised/all_w_both_textprompt_lr1.0e-5_res512_bs8x2/stage1/denoising_unet-53529.pth"
+  controlnet_path: "/mnt/data4/siyoon/i2i_control/bdd_0916/controlnet_checkpoint5200/both_controlnet_transform_revised/all_w_both_textprompt_lr1.0e-5_res512_bs8x2/stage1/pose_guider-53529.pth"
+noise_scheduler_kwargs:
+  num_train_timesteps: 1000
+  beta_start:          0.00085
+  beta_end:            0.012
+  beta_schedule:       "scaled_linear"
+  steps_offset:        1
+  clip_sample:         false
+
+data:
+  val_width: 512 
+  val_height: 512
+
+validation:
+  real_paths:
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7d97d173-09388af3.jpg"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7daa6479-67988f3f.jpg"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7df23ae0-00000000.jpg"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7ef50949-51640000.jpg"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7f0b6105-00000000.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac6e638d-7c84846d.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac9be3fe-790d1f8e.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac56c836-bdabca21.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/afdc295b-5efbee33.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b4d9d4e7-00000000.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b666b95d-ec6681ac.jpg"
+  seg_paths:
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7d2f7975-e0c1c5a7.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7d209219-ccdc1a09.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7dc08598-f42e2015.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7e5ef657-a9ad0001.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7e788ad5-00000000.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7ee5d536-808b2dd5.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7f3656b9-ef39e56d.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8a66084a-5158b84e.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8dd5f9b7-00000000.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8fd046f2-bb680001.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/9c2b6b1e-917011ce.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/9c94f476-8107ee6b.png"
+output_dir: "./inference_results_wo_ctrlnet"

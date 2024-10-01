@@ -882,6 +882,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
         added_cond_kwargs: Optional[Dict[str, torch.Tensor]] = None,
         down_block_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
         mid_block_additional_residual: Optional[torch.Tensor] = None,
+        conditional_controls :Optional[torch.Tensor] = None, 
         down_intrablock_additional_residuals: Optional[Tuple[torch.Tensor]] = None,
         encoder_attention_mask: Optional[torch.Tensor] = None,
         return_dict: bool = True,
@@ -1185,7 +1186,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
 
         down_block_res_samples = (sample,)
         tot_referece_features = ()
-        for downsample_block in self.down_blocks:
+        for down_idx, downsample_block in enumerate(self.down_blocks):
             if (
                 hasattr(downsample_block, "has_cross_attention")
                 and downsample_block.has_cross_attention
@@ -1214,7 +1215,16 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
                     sample += down_intrablock_additional_residuals.pop(0)
 
             down_block_res_samples += res_samples
-
+            if down_idx == 0 and conditional_controls is not None:
+                scale = conditional_controls['scale']
+                conditional_controls = conditional_controls['output']
+                conditional_controls = nn.functional.adaptive_avg_pool2d(conditional_controls, sample.shape[-2:])
+                conditional_controls = conditional_controls.to(sample)
+                mean_latents, std_latents = torch.mean(sample, dim=(1,2,3), keepdim=True), torch.std(sample, dim=(1,2,3),keepdim=True)
+                mean_control, std_control = torch.mean(conditional_controls, dim=(1,2,3), keepdim=True), torch.std(conditional_controls, dim=(1,2,3), keepdim=True)
+                conditional_controls = (conditional_controls - mean_control) * (std_latents / (std_control + 1e-12)) + mean_latents 
+                sample = sample + conditional_controls * scale  
+                
         if is_controlnet:
             new_down_block_res_samples = ()
 

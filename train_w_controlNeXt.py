@@ -10,6 +10,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from safetensors.torch import load_file, save_file
 
 import diffusers
 import mlflow
@@ -22,15 +23,16 @@ import transformers
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import DistributedDataParallelKwargs
-from diffusers import (AutoencoderKL, ControlNetModel, DDIMScheduler,
+from diffusers import (AutoencoderKL,  DDIMScheduler,
                        StableDiffusionControlNetPipeline)
 from diffusers.optimization import get_scheduler
 from omegaconf import OmegaConf
 from PIL import Image
 from src.dataset.real_seg_image_bdd import RealSegDataset
 from src.models.mutual_self_attention import ReferenceAttentionControl
-from src.models.pose_guider import PoseGuider
+# from src.models.pose_guider import PoseGuider
 from src.models.unet_2d_condition import UNet2DConditionModel
+from src.models.controlnext import ControlNeXtModel
 # from src.models.unet_3d import UNet3DConditionModel
 from src.pipelines.pipeline_pose2img import Pose2ImagePipeline
 from src.utils.util import (delete_additional_ckpt, import_filename,
@@ -53,14 +55,14 @@ class Net(nn.Module):
         self,
         reference_unet: UNet2DConditionModel,
         denoising_unet: UNet2DConditionModel,
-        pose_guider: PoseGuider,
+        controlnext: ControlNeXtModel,
         reference_control_writer,
         reference_control_reader,
     ):
         super().__init__()
         self.reference_unet = reference_unet
         self.denoising_unet = denoising_unet
-        self.pose_guider = pose_guider
+        self.controlnext = controlnext
         self.reference_control_writer = reference_control_writer
         self.reference_control_reader = reference_control_reader
 
@@ -69,7 +71,7 @@ class Net(nn.Module):
         noisy_latents,
         timesteps,
         ref_image_latents,
-        # ref_seg,
+        ref_seg_img,
         seg_text_prompt_embeds,
         ref_text_prompt_embeds,
         content_img, #pose_img,
@@ -77,37 +79,28 @@ class Net(nn.Module):
         guess_mode=False,
     ):
         if not uncond_fwd:
-            ref_timesteps = torch.zeros_like(timesteps)
+            ref_timesteps = torch.ones_like(timesteps)           
+            ref_controlnext_output = self.controlnext(ref_seg_img, ref_timesteps)
+          
             self.reference_unet(
                 ref_image_latents,
                 ref_timesteps,
-                encoder_hidden_states=ref_text_prompt_embeds, 
+                encoder_hidden_states= ref_text_prompt_embeds,
+                conditional_controls=ref_controlnext_output,
                 return_dict=False,
             )
             self.reference_control_reader.update(self.reference_control_writer)
-        import pdb; pdb.set_trace()
-        controlnet_latents=noisy_latents
-        pose_cond_tensor = content_img.to(device="cuda")
-        down_block_res_samples, mid_block_res_sample  = self.pose_guider(
-            controlnet_latents,
-            timesteps,
-            encoder_hidden_states=seg_text_prompt_embeds,
-            controlnet_cond=pose_cond_tensor, 
-            # guess_mode=guess_mode,
-            return_dict=False,     
-        )
+            
+        den_controlnext_output = self.controlnext(content_img, timesteps)
         
         model_pred = self.denoising_unet(
             noisy_latents,
             timesteps,
             encoder_hidden_states= seg_text_prompt_embeds,
-            down_block_additional_residuals=[
-                sample for sample in down_block_res_samples
-            ],
-            mid_block_additional_residual=mid_block_res_sample,
+            conditional_controls=den_controlnext_output,
             return_dict=False,
         )[0] 
-        del seg_text_prompt_embeds, ref_text_prompt_embeds, pose_cond_tensor
+        del seg_text_prompt_embeds, ref_text_prompt_embeds
         gc.collect()
         torch.cuda.empty_cache()
         return model_pred
@@ -144,8 +137,8 @@ def compute_snr(noise_scheduler, timesteps):
 
 
 def log_validation(
+    cfg,
     vae,
-    image_enc,
     net,
     scheduler,
     accelerator,
@@ -158,59 +151,36 @@ def log_validation(
     ori_net = accelerator.unwrap_model(net)
     reference_unet = ori_net.reference_unet
     denoising_unet = ori_net.denoising_unet
-    pose_guider = ori_net.pose_guider
+    controlnext = ori_net.controlnext
     generator = torch.Generator().manual_seed(42)
     # cast unet dtype
     vae = vae.to(dtype=torch.float32)
-    image_enc = image_enc.to(dtype=torch.float32)
 
     pipe = Pose2ImagePipeline(
         vae=vae,
-        image_encoder=image_enc,
         reference_unet=reference_unet,
         denoising_unet=denoising_unet,
-        pose_guider=pose_guider,
+        pose_guider=controlnext,
         scheduler=scheduler,
 
     )
     pipe = pipe.to(accelerator.device)
-
-    ref_image_paths = [
-        "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac6e638d-7c84846d.jpg",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac9be3fe-790d1f8e.jpg",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac56c836-bdabca21.jpg",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/afdc295b-5efbee33.jpg",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b4d9d4e7-00000000.jpg",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b666b95d-ec6681ac.jpg"
-    ]
-    pose_image_paths = [
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7d2f7975-e0c1c5a7.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7d209219-ccdc1a09.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7dc08598-f42e2015.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7e5ef657-a9ad0001.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7e788ad5-00000000.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7ee5d536-808b2dd5.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7f3656b9-ef39e56d.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8a66084a-5158b84e.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8dd5f9b7-00000000.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8fd046f2-bb680001.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/9c2b6b1e-917011ce.png",
-        "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/9c94f476-8107ee6b.png",
-    ]
+    ref_image_paths = cfg.validation.real_paths 
+    pose_image_paths = cfg.validation.seg_paths
 
     pil_images = []
     for ref_image_path in ref_image_paths:
         for pose_image_path in pose_image_paths:
             pose_name = pose_image_path.split("/")[-1].replace(".png", "")
-
-            # pose_panoptic_name = pose_image_path.replace("/gtFine/", "/gtFinePanopticImages/").replace("_gtFine_color", "_gtFinePanopticImages")
             ref_name = ref_image_path.split("/")[-1].replace(".jpg", "")
             ref_image_pil = Image.open(ref_image_path).convert("RGB")
             pose_image_pil = Image.open(pose_image_path).convert("RGB")
-
+            ref_seg_path = ref_image_path.replace("/images/10k/val/","/labels/sem_seg/colormaps/val/").replace(".jpg", ".png")
+            ref_seg_pil = Image.open(ref_seg_path).convert("RGB")
             cond_image_pil = None
             image = pipe(
                 ref_image_pil,
+                ref_seg_pil,
                 pose_image_pil,
                 cond_image_pil,
                 # ref_json,
@@ -245,7 +215,6 @@ def log_validation(
             pil_images.append({"name": f"{ref_name}_{pose_name}", "img": canvas})
 
     vae = vae.to(dtype=torch.float16)
-    image_enc = image_enc.to(dtype=torch.float16)
 
     del vae
     del pipe
@@ -312,24 +281,22 @@ def main(cfg):
     reference_unet = UNet2DConditionModel.from_pretrained(
         cfg.base_model_path,
         subfolder="unet",
-    ).to(device="cuda")
+    )#.to(device="cuda")
     denoising_unet = UNet2DConditionModel.from_pretrained(
         cfg.base_model_path,
         subfolder="unet",
-    ).to(device="cuda")
-    image_enc = CLIPVisionModelWithProjection.from_pretrained(
-        cfg.image_encoder_path
-    ).to(dtype=weight_dtype, device="cuda")
-    pose_guider = ControlNetModel.from_pretrained(
-        cfg.controlnet_path, 
-        low_cpu_mem_usage = False, 
-        device_map = None,
-        strict=False,
-    ).to(device="cuda")
+    )#.to(device="cuda")
+    unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
+ 
+    reference_unet.load_state_dict(unet_sd)
+    denoising_unet.load_state_dict(unet_sd)
+    controlnext = ControlNeXtModel(controlnext_scale=cfg.controlnext_scale)
+    controlnext.load_state_dict(load_file(cfg.controlnext_path))
+    denoising_unet.to(device="cuda")
+    reference_unet.to(device="cuda")
     # denoising_unet.load_state_dict(torch.load(f"{cfg.controlnet_path}/diffusion_pytorch_model.bin"), strict=False)
     # Freeze
     vae.requires_grad_(False)
-    image_enc.requires_grad_(False)
     denoising_unet.requires_grad_(True)
     #  Some top layer parames of reference_unet don't need grad
     # for name, param in reference_unet.named_parameters():
@@ -338,8 +305,8 @@ def main(cfg):
     #     else:
     #         param.requires_grad_(True)
     reference_unet.requires_grad_(True)
-    pose_guider.requires_grad_(True)
-    pose_guider.train()
+    controlnext.requires_grad_(True)
+    controlnext.train()
     reference_control_writer = ReferenceAttentionControl(
         reference_unet,
         do_classifier_free_guidance=False,
@@ -356,7 +323,7 @@ def main(cfg):
     net = Net(
         reference_unet,
         denoising_unet,
-        pose_guider,
+        controlnext,
         reference_control_writer,
         reference_control_reader,
     )
@@ -365,12 +332,12 @@ def main(cfg):
     if cfg.solver.enable_xformers_memory_efficient_attention:
         reference_unet.enable_xformers_memory_efficient_attention()
         denoising_unet.enable_xformers_memory_efficient_attention()
-        pose_guider.enable_xformers_memory_efficient_attention()
+        controlnext.enable_xformers_memory_efficient_attention()
 
     if cfg.solver.gradient_checkpointing:
         reference_unet.enable_gradient_checkpointing()
         denoising_unet.enable_gradient_checkpointing()
-        pose_guider.enable_gradient_checkpointing()
+        controlnext.enable_gradient_checkpointing()
     if cfg.solver.scale_lr:
         learning_rate = (
             cfg.solver.learning_rate
@@ -395,7 +362,7 @@ def main(cfg):
         optimizer_cls = torch.optim.AdamW
 
     _trainable = lambda m: [p for p in m.parameters() if p.requires_grad]
-    trainable_params = _trainable(net.denoising_unet) + _trainable(net.pose_guider) + _trainable(net.reference_unet)
+    trainable_params = _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(net.reference_unet)
 
     optimizer = optimizer_cls(
         trainable_params,
@@ -513,14 +480,22 @@ def main(cfg):
             with accelerator.accumulate(net):
                 # Convert videos to latent space
                 pixel_values = batch["img"].to(weight_dtype)
+                pixel_values_ref = batch["ref_image"].to(weight_dtype)
                 with torch.no_grad():
                     latents = vae.encode(pixel_values).latent_dist.sample()
                     latents = latents * 0.18215
+                    ref_latents = vae.encode(pixel_values_ref).latent_dist.sample()
+                    ref_latents = ref_latents * 0.18215
                 noise = torch.randn_like(latents)
+                ref_noise = torch.randn_like(ref_latents)
                 if cfg.noise_offset > 0.0:
                     noise += cfg.noise_offset * torch.randn(
                         (noise.shape[0], noise.shape[1], 1, 1),
                         device=noise.device,
+                    )
+                    ref_noise += cfg.noise_offset * torch.randn(
+                        (ref_noise.shape[0], ref_noise.shape[1], 1, 1),
+                        device=ref_noise.device,
                     )
                 bsz = latents.shape[0]
                 # Sample a random timestep for each video
@@ -531,46 +506,39 @@ def main(cfg):
                     device=latents.device,
                 )
                 timesteps = timesteps.long()
-
-                tgt_pose_img = batch["seg_image"] # (bs, 3, 1, 512, 512)
-
+                ref_timesteps = torch.ones_like(timesteps).long() 
+                tgt_seg_img = batch["seg_image"] # (bs, 3, 1, 512, 512)
+                ref_seg_img = batch["ref_seg_image"]
                 if cfg.data.cond_mode == "multi_canny":
                     canny_cond_img = batch["canny_cond_image"]
-                    content_img = torch.cat([tgt_pose_img, canny_cond_img], dim=1)
+                    content_img = torch.cat([tgt_seg_img, canny_cond_img], dim=1)
                 elif cfg.data.cond_mode == "multi_panop":
                     panop_cond_img = batch["panop_cond_image"]
-                    content_img = torch.cat([tgt_pose_img, panop_cond_img], dim=1)
+                    content_img = torch.cat([tgt_seg_img, panop_cond_img], dim=1)
                 elif cfg.data.cond_mode == "single":
-                    content_img = tgt_pose_img
+                    content_img = tgt_seg_img
                 uncond_fwd = random.random() < cfg.uncond_ratio
-                clip_image_list = []
-                ref_image_list = []
+
+           
                 seg_text_embeds_list = []
                 ref_text_embeds_list = []
-                ref_seg_image_list = []
 
-
+                seg_json_name = batch["seg_json_name"][0]
                 with torch.no_grad():
-                    for batch_idx, (ref_img, ref_seg, seg_json_name, seg_image_name, ref_seg_image_name) in enumerate(
+                    for batch_idx, (seg_image_name, ref_seg_image_name) in enumerate(
                         zip(
-                            batch["ref_image"],
-                            batch["ref_seg_image"],
-                            # batch["clip_image"],
-                            batch["seg_json_name"],
                             batch["seg_image_name"],
                             batch["ref_seg_image_name"]
                         )
                     ):
-                        ref_image_list.append(ref_img)
-                        ref_seg_image_list.append(ref_seg)
+                
                         
                         with open(seg_json_name, "r") as f:
                             seg_json_data = json.load(f)
                             tgt_object_names = []
                             ref_object_names = []
-                            
-                            tgt_object_names = seg_json_data[seg_image_name]
-                            ref_object_names = seg_json_data[ref_seg_image_name]
+                            tgt_object_names = seg_json_data[seg_image_name.split("/")[-1]]
+                            ref_object_names = seg_json_data[ref_seg_image_name.split("/")[-1]]
                           
                         
                         seg_instance_prompt = "A photo of driving scene"
@@ -589,7 +557,6 @@ def main(cfg):
 
                         
                         ref_instance_prompt="A photo of driving scene"
-                        
                         for object in ref_object_names:
                             ref_instance_prompt += f" {object},"
                         ref_text_inputs = tokenizer(
@@ -604,14 +571,6 @@ def main(cfg):
                         ref_text_embeds_list.append(ref_text_embeds)
 
                 with torch.no_grad():
-                    ref_img = torch.stack(ref_image_list, dim=0).to(
-                        dtype=vae.dtype, device=vae.device
-                    )
-                    ref_image_latents = vae.encode(
-                        ref_img
-                    ).latent_dist.sample()  # (bs, d, 64, 64) [4, 4, 96, 96]
-                    ref_image_latents = ref_image_latents * 0.18215
-
                     seg_text_prompt_embeds = torch.cat(seg_text_embeds_list, dim=0).to(
                         dtype=vae.dtype, device=vae.device
                     )
@@ -622,6 +581,9 @@ def main(cfg):
                 # add noise
                 noisy_latents = train_noise_scheduler.add_noise(
                     latents, noise, timesteps
+                )
+                noisy_ref_latents = train_noise_scheduler.add_noise(
+                    ref_latents, ref_noise, ref_timesteps
                 )
                 # Get the target for loss depending on the prediction type
                 if train_noise_scheduler.prediction_type == "epsilon":
@@ -638,8 +600,8 @@ def main(cfg):
                 model_pred = net(
                     noisy_latents,
                     timesteps,
-                    ref_image_latents,
-                    # ref_seg,
+                    noisy_ref_latents,
+                    ref_seg_img,
                     seg_text_prompt_embeds,
                     ref_text_prompt_embeds,
                     content_img, 
@@ -710,8 +672,8 @@ def main(cfg):
                         generator.manual_seed(cfg.seed)
 
                         sample_dicts = log_validation(
+                            cfg=cfg,
                             vae=vae,
-                            image_enc=image_enc,
                             net=net,
                             scheduler=val_noise_scheduler,
                             accelerator=accelerator,
@@ -757,9 +719,9 @@ def main(cfg):
                 total_limit=2,
             )
             save_checkpoint(
-                unwrap_net.pose_guider,
+                unwrap_net.controlnext,
                 save_dir,
-                "pose_guider",
+                "controlnext",
                 global_step,
                 total_limit=2,
             )

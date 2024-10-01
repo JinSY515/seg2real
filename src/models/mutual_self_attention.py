@@ -4,10 +4,10 @@ from typing import Any, Dict, Optional
 import torch
 from einops import rearrange
 
-# from .attention import BasicTransformerBlock
+from .attention import BasicTransformerBlock
 import torch.nn.functional as F
 
-from diffusers.models.attention import BasicTransformerBlock, Attention
+# from diffusers.models.attention import BasicTransformerBlock, Attention
 # from src.utils.viz import save_in_colormap
 def torch_dfs(model: torch.nn.Module):
     result = [model]
@@ -186,30 +186,30 @@ class ReferenceAttentionControl:
                     # if len(bank_fea) != 0:
                     #     t_bank_fea = torch.Tensor(bank_fea[0])
                     
-                    if len(bank_fea) != 0:
-                        query = self.attn1.head_to_batch_dim(self.attn1.to_q(norm_hidden_states.float())).contiguous()
-                        key = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
-                        value = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
-                        scale = 1 / query.shape[-1] ** 0.5
+                    # if len(bank_fea) != 0:
+                    #     query = self.attn1.head_to_batch_dim(self.attn1.to_q(norm_hidden_states.float())).contiguous()
+                    #     key = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
+                    #     value = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
+                    #     scale = 1 / query.shape[-1] ** 0.5
                         
-                        query = query * scale 
-                        attn = query @ key.transpose(-2, -1)
-                        if attention_mask is not None: 
-                            attn = attn + attention_mask 
-                        attn = attn.softmax(-1)
-                        attn = F.dropout(attn, 0.0)
-                        out = attn @ value 
-                        out = self.attn1.batch_to_head_dim(out)
-                        out = self.attn1.to_out[0](out)
-                        out = self.attn1.to_out[1](out)
-                        out = out / self.attn1.rescale_output_factor
+                    #     query = query * scale 
+                    #     attn = query @ key.transpose(-2, -1)
+                    #     if attention_mask is not None: 
+                    #         attn = attn + attention_mask 
+                    #     attn = attn.softmax(-1)
+                    #     attn = F.dropout(attn, 0.0)
+                    #     out = attn @ value 
+                    #     out = self.attn1.batch_to_head_dim(out)
+                    #     out = self.attn1.to_out[0](out)
+                    #     out = self.attn1.to_out[1](out)
+                    #     out = out / self.attn1.rescale_output_factor
                         
-                    else :
-                        out = self.attn1(
-                            norm_hidden_states,
-                            encoder_hidden_states=modify_norm_hidden_states,
-                            attention_mask=attention_mask,
-                        )
+                    # else :
+                    out = self.attn1(
+                        norm_hidden_states,
+                        encoder_hidden_states=modify_norm_hidden_states,
+                        attention_mask=attention_mask,
+                    )
                         
                     hidden_states_uc = (
                         # self.attn1(
@@ -335,6 +335,8 @@ class ReferenceAttentionControl:
             attn_modules = sorted(
                 attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
+            print(attn_modules)
+            
             for i, module in enumerate(attn_modules):
                 module._original_inner_forward = module.forward
                 if isinstance(module, BasicTransformerBlock):
@@ -394,7 +396,7 @@ class ReferenceAttentionControl:
             
             for r, w in zip(reader_attn_modules, writer_attn_modules):
                 r.bank = [v.clone().to(dtype) for v in w.bank]
-                # w.bank.clear()
+                w.bank.clear()
 
     def clear(self):
         if self.reference_attn:

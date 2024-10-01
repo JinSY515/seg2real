@@ -1,5 +1,5 @@
 data:
-  train_bs: 8
+  train_bs: 4
   train_width: 512
   train_height: 512
   train_seg_width: 512
@@ -45,8 +45,8 @@ noise_scheduler_kwargs:
 
 base_model_path: "/home/cvlab15/project/siyoon/i2i_control/checkpoints/sd-image-variations-diffusers" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-image-variations-diffusers'
 vae_model_path: "stabilityai/sd-vae-ft-mse" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-vae-ft-mse'
-image_encoder_path: "/home/cvlab15/project/siyoon/i2i_control/checkpoints/image_encoder" #"laion/CLIP-ViT-bigG-14-laion2B-39B-b160k" #'./pretrained_weights/sd-image-variations-diffusers/image_encoder'
-controlnet_path: "/home/cvlab15/project/siyoon/controlnet/checkpoint-5200/controlnet" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+controlnext_scale : 1.0
 
 weight_dtype: 'fp16'  # [fp16, fp32]
 uncond_ratio: 0.1
@@ -60,4 +60,31 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 200
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_0916/controlnet_checkpoint5200/only_controlnet_transform_revised_cfg/all_w_both_textprompt_lr1.0e-5_res512_bs8x1'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_0930/controlnext_checkpoint7200/both_controlnet_transform_revised2/all_w_both_textprompt_lr1.0e-5_res512_bs4x2'
+
+validation:
+  real_paths:
+      - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7d97d173-09388af3.jpg"
+      - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7daa6479-67988f3f.jpg"
+      - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7df23ae0-00000000.jpg"
+      - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7ef50949-51640000.jpg"
+      - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7f0b6105-00000000.jpg"
+      # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac6e638d-7c84846d.jpg"
+      # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac9be3fe-790d1f8e.jpg"
+      # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac56c836-bdabca21.jpg"
+      # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/afdc295b-5efbee33.jpg"
+      # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b4d9d4e7-00000000.jpg"
+      # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b666b95d-ec6681ac.jpg"
+  seg_paths:
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7d2f7975-e0c1c5a7.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7d209219-ccdc1a09.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7dc08598-f42e2015.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7e5ef657-a9ad0001.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7e788ad5-00000000.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7ee5d536-808b2dd5.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/7f3656b9-ef39e56d.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8a66084a-5158b84e.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8dd5f9b7-00000000.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/8fd046f2-bb680001.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/9c2b6b1e-917011ce.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/val/9c94f476-8107ee6b.png"

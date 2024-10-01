@@ -30,6 +30,7 @@ class Pose2ImagePipeline(DiffusionPipeline):
     def __init__(
         self,
         vae,
+        image_encoder,
         reference_unet,
         denoising_unet,
         pose_guider,
@@ -47,6 +48,7 @@ class Pose2ImagePipeline(DiffusionPipeline):
         self.text_encoder = CLIPTextModel.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="text_encoder").to(device="cuda")
         self.register_modules(
             vae=vae,
+            image_encoder=image_encoder,
             reference_unet=reference_unet,
             denoising_unet=denoising_unet,
             pose_guider=pose_guider,
@@ -180,40 +182,12 @@ class Pose2ImagePipeline(DiffusionPipeline):
             image = torch.cat([image] * 2)
 
         return image
-    def prepare_image(
-        self,
-        image,
-        width,
-        height,
-        batch_size,
-        num_images_per_prompt,
-        device,
-        dtype,
-        do_classifier_free_guidance=False,
-        guess_mode=False,
-    ):
-        image = self.cond_image_processor.preprocess(image, height=height, width=width).to(dtype=torch.float32)
-        image_batch_size = image.shape[0]
 
-        if image_batch_size == 1:
-            repeat_by = batch_size
-        else:
-            # image batch size is the same as prompt batch size
-            repeat_by = num_images_per_prompt
-
-        image = image.repeat_interleave(repeat_by, dim=0)
-
-        image = image.to(device=device, dtype=dtype)
-
-        if do_classifier_free_guidance and not guess_mode:
-            image = torch.cat([image] * 2)
-
-        return image
     @torch.no_grad()
     def __call__(
         self,
         ref_image,
-        ref_seg_image,
+        ref_cond_image,
         pose_image,
         cond_image,
         # ref_json,
@@ -284,21 +258,19 @@ class Pose2ImagePipeline(DiffusionPipeline):
         ref_image_latents = self.vae.encode(ref_image_tensor).latent_dist.mean
         ref_image_latents = ref_image_latents * 0.18215  # (b, 4, h, w)
 
-        ref_seg_image = self.prepare_image(
-            ref_seg_image, 
-            num_images_per_prompt=num_images_per_prompt,
-            width=width,
-            height=height,
-            batch_size=batch_size,
-            device=device,
-            dtype=self.vae.dtype, 
-
-        )
         # Prepare pose condition image
         pose_cond_tensor = self.cond_image_processor.preprocess(
             pose_image, height=height, width=width
         )
         pose_cond_tensor = pose_cond_tensor.to(
+            device=device, dtype=self.pose_guider.dtype
+        )
+        
+        # Prepare pose condition of reference image 
+        ref_pose_cond_tensor = self.cond_image_processor.preprocess(
+            ref_cond_image, height=height, width=width
+        )
+        ref_pose_cond_tensor = ref_pose_cond_tensor.to(
             device=device, dtype=self.pose_guider.dtype
         )
         
@@ -335,15 +307,8 @@ class Pose2ImagePipeline(DiffusionPipeline):
             max_length=77,
             return_tensors="pt",
         )
-        if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
-            attention_mask=text_inputs.attention_mask.to(device)
-        else:
-            attention_mask=None 
-        
-        text_embeds = self.text_encoder(
-            text_inputs.input_ids.to(device="cuda"),
-            attention_mask=attention_mask
-        )[0]
+        input_ids = text_inputs.input_ids 
+        text_embeds = self.text_encoder(input_ids.to(device="cuda"))[0]
         
         # with open(ref_json,"r") as fr:
         #     ref_data = json.load(fr)
@@ -363,15 +328,8 @@ class Pose2ImagePipeline(DiffusionPipeline):
             max_length=77,
             return_tensors="pt"
         )
-        
-        if hasattr(self.text_encoder.config, "use_attention_mask") and self.text_encoder.config.use_attention_mask:
-            attention_mask=ref_text_inputs.attention_mask.to(device)
-        else:
-            attention_mask=None 
-        ref_text_embeds = self.text_encoder(
-            ref_text_inputs.input_ids.to(device="cuda"),
-            attention_mask=attention_mask
-        )[0]
+        ref_input_ids = ref_text_inputs.input_ids 
+        ref_text_embeds = self.text_encoder(ref_input_ids.to(device="cuda"))[0]
         # denoising loop
         num_warmup_steps = len(timesteps) - num_inference_steps * self.scheduler.order
         with self.progress_bar(total=num_inference_steps) as progress_bar:
@@ -381,20 +339,35 @@ class Pose2ImagePipeline(DiffusionPipeline):
                 #     image_prompt_embeds = image_prompt_embeds.unsqueeze(1)
                 
                 if i == 0:
-                    ref_controlnext_output = self.pose_guider(
-                        ref_seg_image, 
-                        torch.ones_like(t)
+                    ref_controlnet_latents = ref_image_latents 
+                    ref_cond_tensor = ref_pose_cond_tensor.to(device="cuda")
+                    ref_down_block_res_samples, ref_mid_block_res_sample = self.pose_guider(
+                        ref_controlnet_latents,
+                        torch.zeros_like(t),
+                        encoder_hidden_states=ref_text_embeds,
+                        controlnet_cond=ref_cond_tensor,
+                        return_dict=False,
                     )
+                # self.reference_unet(
+                #     ref_image_latents.repeat(
+                #         (2 if do_classifier_free_guidance else 1), 1, 1, 1
+                #     ),
+                #     torch.zeros_like(t),
+                #     encoder_hidden_states=ref_text_embeds,
+                #     return_dict=False,
+                # )
                     self.reference_unet(
                         ref_image_latents.repeat(
                             (2 if do_classifier_free_guidance else 1), 1, 1, 1
                         ),
-                        torch.ones_like(t),
+                        torch.zeros_like(t),
                         encoder_hidden_states=ref_text_embeds,
-                        conditional_controls=ref_controlnext_output,
+                        down_block_additional_residuals=[
+                            sample for sample in ref_down_block_res_samples
+                        ],
+                        mid_block_additional_residual=ref_mid_block_res_sample,
                         return_dict=False,
                     )
-
                     # 2. Update reference unet feature into denosing net
                     reference_control_reader.update(reference_control_writer)
 
@@ -406,16 +379,25 @@ class Pose2ImagePipeline(DiffusionPipeline):
                     latent_model_input, t
                 )
                 
-                den_controlnext_output = self.pose_guider(
-                    conditions_fea, 
-                    t
+                controlnet_latents = latents 
+                controlnet_latents = self.scheduler.scale_model_input(controlnet_latents, t)
+                down_block_res_samples, mid_block_res_sample = self.pose_guider(
+                    controlnet_latents,
+                    t,
+                    encoder_hidden_states=text_embeds,
+                    controlnet_cond=conditions_fea,
+                    # conditioning_scale=9.0,
+                    # guess_mode=True, 
+                    return_dict=False,
                 )
+        
         
                 noise_pred = self.denoising_unet(
                     latent_model_input,
                     t,
                     encoder_hidden_states=text_embeds,
-                    conditional_controls=den_controlnext_output,
+                    down_block_additional_residuals=down_block_res_samples,
+                    mid_block_additional_residual=mid_block_res_sample,
                     return_dict=False,
                 )[0]
                 # perform guidance

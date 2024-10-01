@@ -90,7 +90,7 @@ class RealSegDataset(Dataset):
         tgt_image_name = seg_image_name.replace("/labels/sem_seg/colormaps/train/", "/images/10k/train/").replace(".png", ".jpg")
         tgt_image = Image.open(tgt_image_name) 
 # /mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/train/
-        json_name = str(self.seg_images_path).replace("/colormaps/train/", "customized_sem_seg_train.json")
+        json_name = mode_image_name.replace('/colormaps/train/', '/customized_sem_seg_train/').rsplit('/', 1)[0] + '.json'
         example["seg_json_name"] = json_name
 
         if self.mode in ["default", "panoptic"]:
@@ -99,7 +99,7 @@ class RealSegDataset(Dataset):
             while ref_seg_img_idx == index :
                 ref_seg_img_idx = random.randint(0, self.num_seg_images)
 
-            ref_seg_image_name = str(self.seg_images_path[ref_seg_img_idx % self.num_real_images])
+            ref_seg_image_name = str(self.seg_images_path[ref_seg_img_idx % self.num_seg_images])
             ref_seg_image = Image.open(ref_seg_image_name) 
             ref_image_name = ref_seg_image_name.replace("/labels/sem_seg/colormaps/train/", "/images/10k/train/").replace(".png", ".jpg")
             # ref_real_image_name = ref_image_name.replace("/labels/sem_seg/colormaps/", "/images/10k/").replace(".png", ".jpg")
