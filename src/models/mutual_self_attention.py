@@ -169,7 +169,7 @@ class ReferenceAttentionControl:
             else:
                 if MODE == "write":
                     self.bank.append(norm_hidden_states.clone())
-                    attn_output = self.attn1(
+                    attn_output, attn_score = self.attn1(
                         norm_hidden_states,
                         encoder_hidden_states=encoder_hidden_states
                         if self.only_cross_attention
@@ -184,42 +184,44 @@ class ReferenceAttentionControl:
                         [norm_hidden_states] + bank_fea, dim=1
                     )
                     # if len(bank_fea) != 0:
-                    #     t_bank_fea = torch.Tensor(bank_fea[0])
-                    
-                    # if len(bank_fea) != 0:
-                    #     query = self.attn1.head_to_batch_dim(self.attn1.to_q(norm_hidden_states.float())).contiguous()
-                    #     key = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
-                    #     value = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
-                    #     scale = 1 / query.shape[-1] ** 0.5
-                        
-                    #     query = query * scale 
-                    #     attn = query @ key.transpose(-2, -1)
-                    #     if attention_mask is not None: 
-                    #         attn = attn + attention_mask 
-                    #     attn = attn.softmax(-1)
-                    #     attn = F.dropout(attn, 0.0)
-                    #     out = attn @ value 
-                    #     out = self.attn1.batch_to_head_dim(out)
-                    #     out = self.attn1.to_out[0](out)
-                    #     out = self.attn1.to_out[1](out)
-                    #     out = out / self.attn1.rescale_output_factor
-                        
-                    # else :
-                    out = self.attn1(
-                        norm_hidden_states,
+                    hidden_states_uc, attn_score_uc = self.attn1(
+                        norm_hidden_states, 
                         encoder_hidden_states=modify_norm_hidden_states,
                         attention_mask=attention_mask,
                     )
+                    hidden_states_uc = hidden_states + hidden_states_uc  
+                    if len(bank_fea) != 0 and attn_score_uc is not None:
+                        bs =  hidden_states.shape[0]
+                        h, w = attn_score_uc.shape[1], attn_score_uc.shape[2]
+                        attn_score_uc = attn_score_uc.view(bs, -1, h, w )
+                        attn_score_gen, attn_score_ref = torch.chunk(attn_score_uc, 2, dim=-1)
+                        attn_score_ref.requires_grad_(True)
+                        self.attn_score = [attn_score_gen, attn_score_ref]
+                        # torch.cuda.empty_cache()
+
+                    # else:
+                    #     hidden_states_uc = self.attn1(
+                    #         norm_hidden_states,
+                    #         encoder_hidden_states=modify_norm_hidden_states,
+                    #         attention_mask=attention_mask,
+                    #     )
+                    #     hidden_states_uc = hidden_states + hidden_states_uc 
                         
-                    hidden_states_uc = (
-                        # self.attn1(
-                        #     norm_hidden_states,
-                        #     encoder_hidden_states=modify_norm_hidden_states,
-                        #     attention_mask=attention_mask,
-                        # )
-                        out
-                        + hidden_states
-                    )
+                    # out = self.attn1(
+                    #     norm_hidden_states,
+                    #     encoder_hidden_states=modify_norm_hidden_states,
+                    #     attention_mask=attention_mask,
+                    # )
+                        
+                    # hidden_states_uc = (
+                    #     # self.attn1(
+                    #     #     norm_hidden_states,
+                    #     #     encoder_hidden_states=modify_norm_hidden_states,
+                    #     #     attention_mask=attention_mask,
+                    #     # )
+                    #     out
+                    #     + hidden_states
+                    # )
                         
                     
                     if do_classifier_free_guidance:
@@ -234,12 +236,18 @@ class ReferenceAttentionControl:
                                 .to(device)
                                 .bool()
                             )
+                        attn_hidden_states_uc, attn_score_uc = self.attn1(
+                            norm_hidden_states[_uc_mask],
+                            encoder_hidden_states=norm_hidden_states[_uc_mask],
+                            attention_mask=attention_mask, 
+                        )
                         hidden_states_c[_uc_mask] = (
-                            self.attn1(
-                                norm_hidden_states[_uc_mask],
-                                encoder_hidden_states=norm_hidden_states[_uc_mask],
-                                attention_mask=attention_mask,
-                            )
+                            # self.attn1(
+                            #     norm_hidden_states[_uc_mask],
+                            #     encoder_hidden_states=norm_hidden_states[_uc_mask],
+                            #     attention_mask=attention_mask,
+                            # )
+                            attn_hidden_states_uc
                             + hidden_states[_uc_mask]
                         )
                         hidden_states = hidden_states_c.clone()
@@ -254,12 +262,18 @@ class ReferenceAttentionControl:
                             if self.use_ada_layer_norm
                             else self.norm2(hidden_states)
                         )
+                        attn_output2, attn_score2 = self.attn2(
+                            norm_hidden_states, 
+                            encoder_hidden_states=encoder_hidden_states,
+                            attention_mask=attention_mask,
+                        )
                         hidden_states = (
-                            self.attn2(
-                                norm_hidden_states,
-                                encoder_hidden_states=encoder_hidden_states,
-                                attention_mask=attention_mask,
-                            )
+                            # self.attn2(
+                            #     norm_hidden_states,
+                            #     encoder_hidden_states=encoder_hidden_states,
+                            #     attention_mask=attention_mask,
+                            # )
+                            attn_output2
                             + hidden_states
                         )
     
@@ -280,7 +294,7 @@ class ReferenceAttentionControl:
                 )
 
                 # 2. Cross-Attention
-                attn_output = self.attn2(
+                attn_output, _ = self.attn2(
                     norm_hidden_states,
                     encoder_hidden_states=encoder_hidden_states,
                     attention_mask=encoder_attention_mask,
@@ -346,6 +360,7 @@ class ReferenceAttentionControl:
 
                 module.bank = []
                 module.attn_weight = float(i) / float(len(attn_modules))
+                module.attn_score = []
 
     def update(self, writer, dtype=torch.float16):
         if self.reference_attn:
@@ -396,6 +411,7 @@ class ReferenceAttentionControl:
             
             for r, w in zip(reader_attn_modules, writer_attn_modules):
                 r.bank = [v.clone().to(dtype) for v in w.bank]
+                r.attn_score = []
                 w.bank.clear()
 
     def clear(self):
@@ -425,3 +441,4 @@ class ReferenceAttentionControl:
             )
             for r in reader_attn_modules:
                 r.bank.clear()
+                r.attn_score = []

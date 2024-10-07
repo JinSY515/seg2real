@@ -45,8 +45,10 @@ noise_scheduler_kwargs:
 
 base_model_path: "/home/cvlab15/project/siyoon/i2i_control/checkpoints/sd-image-variations-diffusers" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-image-variations-diffusers'
 vae_model_path: "stabilityai/sd-vae-ft-mse" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-vae-ft-mse'
-controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-14000/model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+pretrained_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-14000/model_1.safetensors"
 controlnext_scale : 1.0
+train_matching_module : True
 
 weight_dtype: 'fp16'  # [fp16, fp32]
 uncond_ratio: 0.1
@@ -60,7 +62,7 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 200
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_0930/controlnext_checkpoint7200/both_controlnet_transform_revised2/all_w_both_textprompt_lr1.0e-5_res512_bs4x2'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_0930/controlnext_checkpoint14000/both_controlnet_transform_revised2/update_mask_guidance/all_w_both_textprompt_lr1.0e-5_res512_bs4x1'
 
 validation:
   real_paths:

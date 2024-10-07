@@ -125,9 +125,6 @@ class RealSegDataset(Dataset):
         ref_image = self.augmentation(ref_image, self.transform, rng_state)
         ref_seg_image = self.augmentation(ref_seg_image, self.cond_transform, rng_state)
 
-        # seg_corr = (seg_image[:,:,:,None,None] == ref_seg_image[:, None, None, :, :]).all(dim=0)
-        # seg_corr = (seg_image.cuda()[:, :, :, None, None] == ref_seg_image.cuda()[:, None, None, :, :]).sum(dim=(2, 3, 4)) == ref_seg_image.size(1)
-        
         ## multi cond
         if self.cond_mode == "single":
             pass
@@ -145,7 +142,7 @@ class RealSegDataset(Dataset):
         example["seg_image_name"] = seg_image_name
         example["ref_seg_image_name"] = ref_seg_image_name
         example["ref_seg_image"] = ref_seg_image
-        # example["seg_corr"] = seg_corr
+
 
         return example
 

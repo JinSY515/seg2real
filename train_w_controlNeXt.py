@@ -42,6 +42,8 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from tqdm.auto import tqdm
 from transformers import (CLIPTextModel, CLIPTextModelWithProjection,
                           CLIPTokenizer, CLIPVisionModelWithProjection)
+from src.models.matching_module import OurModel
+from src.models.attention import BasicTransformerBlock
 
 warnings.filterwarnings("ignore")
 torch.backends.cudnn.benchmark = True
@@ -49,6 +51,11 @@ torch.backends.cudnn.enabled = True
 
 logger = get_logger(__name__, log_level="INFO")
 
+def torch_dfs(model: torch.nn.Module):
+    result = [model]
+    for child in model.children():
+        result += torch_dfs(child)
+    return result
 
 class Net(nn.Module):
     def __init__(
@@ -100,6 +107,7 @@ class Net(nn.Module):
             conditional_controls=den_controlnext_output,
             return_dict=False,
         )[0] 
+                
         del seg_text_prompt_embeds, ref_text_prompt_embeds
         gc.collect()
         torch.cuda.empty_cache()
@@ -286,8 +294,9 @@ def main(cfg):
         cfg.base_model_path,
         subfolder="unet",
     )#.to(device="cuda")
-    unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
- 
+    matching_module = OurModel()
+    # unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
+    unet_sd = load_file(cfg.pretrained_unet_path)
     reference_unet.load_state_dict(unet_sd)
     denoising_unet.load_state_dict(unet_sd)
     controlnext = ControlNeXtModel(controlnext_scale=cfg.controlnext_scale)
@@ -299,14 +308,15 @@ def main(cfg):
     vae.requires_grad_(False)
     denoising_unet.requires_grad_(True)
     #  Some top layer parames of reference_unet don't need grad
-    # for name, param in reference_unet.named_parameters():
-    #     if "up_blocks.3" in name:
-    #         param.requires_grad_(False)
-    #     else:
-    #         param.requires_grad_(True)
-    reference_unet.requires_grad_(True)
+    for name, param in reference_unet.named_parameters():
+        if "up_blocks.3" in name:
+            param.requires_grad_(False)
+        else:
+            param.requires_grad_(True)
+    # reference_unet.requires_grad_(True)
     controlnext.requires_grad_(True)
     controlnext.train()
+    matching_module.requires_grad_(True)
     reference_control_writer = ReferenceAttentionControl(
         reference_unet,
         do_classifier_free_guidance=False,
@@ -362,8 +372,12 @@ def main(cfg):
         optimizer_cls = torch.optim.AdamW
 
     _trainable = lambda m: [p for p in m.parameters() if p.requires_grad]
-    trainable_params = _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(net.reference_unet)
-
+    if cfg.train_matching_module:
+        
+        trainable_params = _trainable(matching_module) +  _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(net.reference_unet) 
+    else:
+        trainable_params = _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(net.reference_unet) 
+        
     optimizer = optimizer_cls(
         trainable_params,
         lr=learning_rate,
@@ -476,6 +490,7 @@ def main(cfg):
 
     for epoch in range(first_epoch, num_train_epochs):
         train_loss = 0.0
+        matching_module.train()
         for step, batch in enumerate(train_dataloader):
             with accelerator.accumulate(net):
                 # Convert videos to latent space
@@ -507,8 +522,17 @@ def main(cfg):
                 )
                 timesteps = timesteps.long()
                 ref_timesteps = torch.ones_like(timesteps).long() 
-                tgt_seg_img = batch["seg_image"] # (bs, 3, 1, 512, 512)
-                ref_seg_img = batch["ref_seg_image"]
+                tgt_seg_img = batch["seg_image"] # (bs, 3, 512, 512)
+                ref_seg_img = batch["ref_seg_image"] # (bs, 3, 512, 512)
+                tgt_seg_img_resized = F.interpolate(tgt_seg_img, size=(32, 32), mode='bilinear', align_corners=False)
+                ref_seg_img_resized = F.interpolate(ref_seg_img, size=(32, 32), mode='bilinear', align_corners=False)
+                
+                
+                seg_corr = (tgt_seg_img_resized[:,:,:,:,None,None] == ref_seg_img_resized[:, :, None, None, :, :]).all(dim=1)
+                # import pdb; pdb.set_trace()
+                refined_seg_corr = matching_module(seg_corr.unsqueeze(1).float().cpu())
+                refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1], 32 * 32, 32 * 32)  # (bs, 1, 1024, 1024)
+
                 if cfg.data.cond_mode == "multi_canny":
                     canny_cond_img = batch["canny_cond_image"]
                     content_img = torch.cat([tgt_seg_img, canny_cond_img], dim=1)
@@ -608,6 +632,13 @@ def main(cfg):
                     uncond_fwd,
                 )
 
+                # attn_score_bank = [m.attn_score for m in torch_dfs(net.denoising_unet) if isinstance(m, BasicTransformerBlock)]
+                # for attn_gen, attn_ref in attn_score_bank:
+                #     H = W = int(math.sqrt(attn_ref.shape[-1]))
+                #     refined_seg_corr_ = F.interpolate(refined_seg_corr, size=(H * W, H * W), mode="nearest").expand(-1, attn_ref.shape[1], -1, -1)
+                #     import pdb; pdb.set_trace()
+                #     # attn_ref.add(refined_seg_corr_.to(attn_ref.device)) 
+                #     attn_ref = attn_ref + refined_seg_corr_.to(attn_ref.device)
                 del seg_text_prompt_embeds, ref_text_prompt_embeds
                 torch.cuda.empty_cache()
                 if cfg.snr_gamma == 0:
