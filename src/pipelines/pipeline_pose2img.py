@@ -216,6 +216,9 @@ class Pose2ImagePipeline(DiffusionPipeline):
         ref_seg_image,
         pose_image,
         cond_image,
+        val_json,
+        ref_name, 
+        tgt_name,
         # ref_json,
         # pose_json,
         width,
@@ -314,20 +317,17 @@ class Pose2ImagePipeline(DiffusionPipeline):
             conditions_fea = torch.cat([pose_cond_tensor, condition_tensor],dim=1 )
         else:
             conditions_fea = pose_cond_tensor
-            
-        
-
-        # with open(pose_json, "r") as f:
-        #     pose_data = json.load(f)
-        # object_names = []
-        # for object in pose_data["objects"]:
-        #     object_names.append(object["label"])
-        # object_names = list(set(object_names))
-        # instance_prompt = "A photo of driving scene with"
-        # for object in object_names:
-        #     instance_prompt += f" {object},"
+        ref_object_names = [] 
+        tgt_object_names = []
+        if val_json is not None: 
+            with open(val_json, "r") as f: 
+                val_inst_data = json.load(f)
+                ref_object_names = val_inst_data[ref_name.replace(".jpg", ".png")]
+                tgt_object_names = val_inst_data[tgt_name.replace(".jpg", ".png")]
+                
         instance_prompt = "A photo of driving scene"
-
+        for object in tgt_object_names:
+            instance_prompt += f" {object},s"
         text_inputs = self.tokenizer(
             instance_prompt,
             truncation=True,
@@ -345,14 +345,7 @@ class Pose2ImagePipeline(DiffusionPipeline):
             attention_mask=attention_mask
         )[0]
         
-        # with open(ref_json,"r") as fr:
-        #     ref_data = json.load(fr)
-        # ref_object_names = []
-        # for object in ref_data["objects"]:
-        #     ref_object_names.append(object["label"])
-        # ref_instance_prompt = "A photo of driving scene with"
-        # for object in ref_object_names:
-        #     ref_instance_prompt += f" {object},"
+
         
         ref_instance_prompt = "A photo of driving scene"
 

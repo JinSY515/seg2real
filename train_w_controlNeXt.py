@@ -30,10 +30,8 @@ from omegaconf import OmegaConf
 from PIL import Image
 from src.dataset.real_seg_image_bdd import RealSegDataset
 from src.models.mutual_self_attention import ReferenceAttentionControl
-# from src.models.pose_guider import PoseGuider
 from src.models.unet_2d_condition import UNet2DConditionModel
 from src.models.controlnext import ControlNeXtModel
-# from src.models.unet_3d import UNet3DConditionModel
 from src.pipelines.pipeline_pose2img import Pose2ImagePipeline
 from src.utils.util import (delete_additional_ckpt, import_filename,
                             seed_everything)
@@ -78,19 +76,18 @@ class Net(nn.Module):
         uncond_fwd: bool = False,
         guess_mode=False,
     ):
-        if not uncond_fwd:
-            ref_timesteps = torch.ones_like(timesteps)           
-            ref_controlnext_output = self.controlnext(ref_seg_img, ref_timesteps)
-          
-            self.reference_unet(
-                ref_image_latents,
-                ref_timesteps,
-                encoder_hidden_states= ref_text_prompt_embeds,
-                conditional_controls=ref_controlnext_output,
-                return_dict=False,
-            )
-            self.reference_control_reader.update(self.reference_control_writer)
-            
+        ref_timesteps = torch.ones_like(timesteps)           
+        ref_controlnext_output = self.controlnext(ref_seg_img, ref_timesteps)
+        
+        out = self.reference_unet(
+            ref_image_latents,
+            ref_timesteps,
+            encoder_hidden_states= seg_text_prompt_embeds, #ref_text_prompt_embeds,
+            conditional_controls=ref_controlnext_output,
+            return_dict=False,
+        )
+        self.reference_control_reader.update(self.reference_control_writer)
+        
         den_controlnext_output = self.controlnext(content_img, timesteps)
         
         model_pred = self.denoising_unet(
@@ -167,12 +164,12 @@ def log_validation(
     pipe = pipe.to(accelerator.device)
     ref_image_paths = cfg.validation.real_paths 
     pose_image_paths = cfg.validation.seg_paths
-
+    val_json = cfg.validation.val_json
     pil_images = []
     for ref_image_path in ref_image_paths:
         for pose_image_path in pose_image_paths:
-            pose_name = pose_image_path.split("/")[-1].replace(".png", "")
-            ref_name = ref_image_path.split("/")[-1].replace(".jpg", "")
+            pose_name = pose_image_path.split("/")[-1]#.replace(".png", "")
+            ref_name = ref_image_path.split("/")[-1]#.replace(".jpg", "")
             ref_image_pil = Image.open(ref_image_path).convert("RGB")
             pose_image_pil = Image.open(pose_image_path).convert("RGB")
             ref_seg_path = ref_image_path.replace("/images/10k/val/","/labels/10k/sem_seg/colormaps/val/").replace(".jpg", ".png")
@@ -183,6 +180,9 @@ def log_validation(
                 ref_seg_pil,
                 pose_image_pil,
                 cond_image_pil,
+                val_json, 
+                ref_name, 
+                pose_name,
                 # ref_json,
                 # pose_json,
                 width,
@@ -281,11 +281,11 @@ def main(cfg):
     reference_unet = UNet2DConditionModel.from_pretrained(
         cfg.base_model_path,
         subfolder="unet",
-    )#.to(device="cuda")
+    )
     denoising_unet = UNet2DConditionModel.from_pretrained(
         cfg.base_model_path,
         subfolder="unet",
-    )#.to(device="cuda")
+    )
     # unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
     unet_sd = load_file(cfg.pretrained_unet_path)
     reference_unet.load_state_dict(unet_sd)
@@ -294,24 +294,18 @@ def main(cfg):
     controlnext.load_state_dict(load_file(cfg.controlnext_path))
     denoising_unet.to(device="cuda")
     reference_unet.to(device="cuda")
-    # denoising_unet.load_state_dict(torch.load(f"{cfg.controlnet_path}/diffusion_pytorch_model.bin"), strict=False)
     # Freeze
     vae.requires_grad_(False)
-    # denoising_unet.requires_grad_(True)
-    for name, param in denoising_unet.named_parameters():
-        if "up_blocks.3" in name:
-            param.requires_grad_(True)
-        else:
-            param.requires_grad_(False)
-    # denoising_unet.requires_grad_(True)
-    #  Some top layer parames of reference_unet don't need grad
-    # for name, param in reference_unet.named_parameters():
+    denoising_unet.requires_grad_(False)
+    # for name, param in denoising_unet.named_parameters():
     #     if "up_blocks.3" in name:
-    #         param.requires_grad_(False)
-    #     else:
     #         param.requires_grad_(True)
+    #     else:
+    #         param.requires_grad_(False)
+    # denoising_unet.requires_grad_(True)
+
     reference_unet.requires_grad_(True)
-    controlnext.requires_grad_(True)
+    controlnext.requires_grad_(False)
     # controlnext.train()
     reference_control_writer = ReferenceAttentionControl(
         reference_unet,
@@ -376,7 +370,6 @@ def main(cfg):
         weight_decay=cfg.solver.adam_weight_decay,
         eps=cfg.solver.adam_epsilon,
     )
-
     # Scheduler
     lr_scheduler = get_scheduler(
         cfg.solver.lr_scheduler,
@@ -485,7 +478,10 @@ def main(cfg):
             with accelerator.accumulate(net):
                 # Convert videos to latent space
                 pixel_values = batch["img"].to(weight_dtype)
-                pixel_values_ref = batch["ref_image"].to(weight_dtype)
+                if cfg.train_mode.aug_mode:
+                    pixel_values_ref = batch["ref_aug_image"].to(weight_dtype)
+                else:
+                    pixel_values_ref = batch["ref_image"].to(weight_dtype)
                 with torch.no_grad():
                     latents = vae.encode(pixel_values).latent_dist.sample()
                     latents = latents * 0.18215
@@ -513,7 +509,12 @@ def main(cfg):
                 timesteps = timesteps.long()
                 ref_timesteps = torch.ones_like(timesteps).long() 
                 tgt_seg_img = batch["seg_image"] # (bs, 3, 1, 512, 512)
-                ref_seg_img = batch["ref_seg_image"]
+                
+                if cfg.train_mode.aug_mode :
+                    ref_seg_img = batch["ref_aug_seg_image"]    
+                else: 
+                    ref_seg_img = batch["ref_seg_image"]
+                    
                 if cfg.data.cond_mode == "multi_canny":
                     canny_cond_img = batch["canny_cond_image"]
                     content_img = torch.cat([tgt_seg_img, canny_cond_img], dim=1)
@@ -615,6 +616,7 @@ def main(cfg):
 
                 del seg_text_prompt_embeds, ref_text_prompt_embeds
                 torch.cuda.empty_cache()
+                # torch.autograd.set_detect_anomaly(True)
                 if cfg.snr_gamma == 0:
                     loss = F.mse_loss(
                         model_pred.float(), target.float(), reduction="mean"
@@ -644,13 +646,13 @@ def main(cfg):
                 train_loss += avg_loss.item() / cfg.solver.gradient_accumulation_steps
 
                 # Backpropagate
-                accelerator.backward(loss)
+                accelerator.backward(loss) #, retain_graph=True)
                 if accelerator.sync_gradients:
                     accelerator.clip_grad_norm_(
                         trainable_params,
                         cfg.solver.max_grad_norm,
                     )
-
+                # import pdb; pdb.set_trace()
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()

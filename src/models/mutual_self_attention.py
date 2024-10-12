@@ -183,27 +183,7 @@ class ReferenceAttentionControl:
                     modify_norm_hidden_states = torch.cat(
                         [norm_hidden_states] + bank_fea, dim=1
                     )
-                    # if len(bank_fea) != 0:
-                    #     t_bank_fea = torch.Tensor(bank_fea[0])
-                    
-                    # if len(bank_fea) != 0:
-                    #     query = self.attn1.head_to_batch_dim(self.attn1.to_q(norm_hidden_states.float())).contiguous()
-                    #     key = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
-                    #     value = self.attn1.head_to_batch_dim(self.attn1.to_k(modify_norm_hidden_states.float())).contiguous() 
-                    #     scale = 1 / query.shape[-1] ** 0.5
-                        
-                    #     query = query * scale 
-                    #     attn = query @ key.transpose(-2, -1)
-                    #     if attention_mask is not None: 
-                    #         attn = attn + attention_mask 
-                    #     attn = attn.softmax(-1)
-                    #     attn = F.dropout(attn, 0.0)
-                    #     out = attn @ value 
-                    #     out = self.attn1.batch_to_head_dim(out)
-                    #     out = self.attn1.to_out[0](out)
-                    #     out = self.attn1.to_out[1](out)
-                    #     out = out / self.attn1.rescale_output_factor
-                        
+              
                     # else :
                     out = self.attn1(
                         norm_hidden_states,
@@ -221,7 +201,6 @@ class ReferenceAttentionControl:
                         + hidden_states
                     )
                         
-                    
                     if do_classifier_free_guidance:
                         hidden_states_c = hidden_states_uc.clone()
                         _uc_mask = uc_mask.clone()
@@ -335,7 +314,7 @@ class ReferenceAttentionControl:
             attn_modules = sorted(
                 attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
-            print(attn_modules)
+            # print(attn_modules)
             
             for i, module in enumerate(attn_modules):
                 module._original_inner_forward = module.forward
