@@ -87,7 +87,7 @@ class RealSegDataset(Dataset):
             mode_image_name = seg_image_name
 
         seg_image = Image.open(mode_image_name)
-        tgt_image_name = seg_image_name.replace("/labels/sem_seg/colormaps/train/", "/images/10k/train/").replace(".png", ".jpg")
+        tgt_image_name = seg_image_name.replace("/labels/10k/sem_seg/colormaps/train/", "/images/10k/train/").replace(".png", ".jpg")
         tgt_image = Image.open(tgt_image_name) 
 # /mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/train/
         json_name = mode_image_name.replace('/colormaps/train/', '/customized_sem_seg_train/').rsplit('/', 1)[0] + '.json'
@@ -101,9 +101,9 @@ class RealSegDataset(Dataset):
 
             ref_seg_image_name = str(self.seg_images_path[ref_seg_img_idx % self.num_seg_images])
             ref_seg_image = Image.open(ref_seg_image_name) 
-            ref_image_name = ref_seg_image_name.replace("/labels/sem_seg/colormaps/train/", "/images/10k/train/").replace(".png", ".jpg")
+            ref_image_name = ref_seg_image_name.replace("/labels/10k/sem_seg/colormaps/train/", "/images/10k/train/").replace(".png", ".jpg")
             # ref_real_image_name = ref_image_name.replace("/labels/sem_seg/colormaps/", "/images/10k/").replace(".png", ".jpg")
-
+     
         # elif self.mode == "retrieve_dino":
         #     ref_real_image_name = retrieve(tgt_image_name)
         #     ref_image_name = ref_real_image_name.replace("/images/10k/","/labels/sem_seg/colormaps/").replace(".jpg", ".png")

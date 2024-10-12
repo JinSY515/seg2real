@@ -175,7 +175,7 @@ def log_validation(
             ref_name = ref_image_path.split("/")[-1].replace(".jpg", "")
             ref_image_pil = Image.open(ref_image_path).convert("RGB")
             pose_image_pil = Image.open(pose_image_path).convert("RGB")
-            ref_seg_path = ref_image_path.replace("/images/10k/val/","/labels/sem_seg/colormaps/val/").replace(".jpg", ".png")
+            ref_seg_path = ref_image_path.replace("/images/10k/val/","/labels/10k/sem_seg/colormaps/val/").replace(".jpg", ".png")
             ref_seg_pil = Image.open(ref_seg_path).convert("RGB")
             cond_image_pil = None
             image = pipe(
@@ -286,8 +286,8 @@ def main(cfg):
         cfg.base_model_path,
         subfolder="unet",
     )#.to(device="cuda")
-    unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
- 
+    # unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
+    unet_sd = load_file(cfg.pretrained_unet_path)
     reference_unet.load_state_dict(unet_sd)
     denoising_unet.load_state_dict(unet_sd)
     controlnext = ControlNeXtModel(controlnext_scale=cfg.controlnext_scale)
@@ -297,7 +297,13 @@ def main(cfg):
     # denoising_unet.load_state_dict(torch.load(f"{cfg.controlnet_path}/diffusion_pytorch_model.bin"), strict=False)
     # Freeze
     vae.requires_grad_(False)
-    denoising_unet.requires_grad_(True)
+    # denoising_unet.requires_grad_(True)
+    for name, param in denoising_unet.named_parameters():
+        if "up_blocks.3" in name:
+            param.requires_grad_(True)
+        else:
+            param.requires_grad_(False)
+    # denoising_unet.requires_grad_(True)
     #  Some top layer parames of reference_unet don't need grad
     # for name, param in reference_unet.named_parameters():
     #     if "up_blocks.3" in name:
@@ -306,7 +312,7 @@ def main(cfg):
     #         param.requires_grad_(True)
     reference_unet.requires_grad_(True)
     controlnext.requires_grad_(True)
-    controlnext.train()
+    # controlnext.train()
     reference_control_writer = ReferenceAttentionControl(
         reference_unet,
         do_classifier_free_guidance=False,
@@ -362,8 +368,7 @@ def main(cfg):
         optimizer_cls = torch.optim.AdamW
 
     _trainable = lambda m: [p for p in m.parameters() if p.requires_grad]
-    trainable_params = _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(net.reference_unet)
-
+    trainable_params = _trainable(net.reference_unet) +  _trainable(net.denoising_unet) + _trainable(net.controlnext)
     optimizer = optimizer_cls(
         trainable_params,
         lr=learning_rate,
