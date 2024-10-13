@@ -47,6 +47,22 @@ torch.backends.cudnn.enabled = True
 
 logger = get_logger(__name__, log_level="INFO")
 
+def load_safetensors(model, safetensors_path, strict=True, load_weight_increasement=False):
+    if not load_weight_increasement:
+        if safetensors_path.endswith('.safetensors'):
+            state_dict = load_file(safetensors_path)
+        else:
+            state_dict = torch.load(safetensors_path)
+        model.load_state_dict(state_dict, strict=strict)
+    else:
+        if safetensors_path.endswith('.safetensors'):
+            state_dict = load_file(safetensors_path)
+        else:
+            state_dict = torch.load(safetensors_path)
+        pretrained_state_dict = model.state_dict()
+        for k in state_dict.keys():
+            state_dict[k] = state_dict[k] + pretrained_state_dict[k]
+        model.load_state_dict(state_dict, strict=False)
 
 class Net(nn.Module):
     def __init__(
@@ -287,26 +303,35 @@ def main(cfg):
         subfolder="unet",
     )
     # unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
-    unet_sd = load_file(cfg.pretrained_unet_path)
-    reference_unet.load_state_dict(unet_sd)
-    denoising_unet.load_state_dict(unet_sd)
+    # unet_sd = load_file(cfg.pretrained_unet_path)
+    # reference_unet.load_state_dict(unet_sd)
+    # denoising_unet.load_state_dict(unet_sd)
     controlnext = ControlNeXtModel(controlnext_scale=cfg.controlnext_scale)
-    controlnext.load_state_dict(load_file(cfg.controlnext_path))
+    # controlnext.load_state_dict(load_file(cfg.controlnext_path))
+    
+    if cfg.pretrained_unet_path is not None:
+        load_safetensors(reference_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=True)
+        load_safetensors(denoising_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=True)
+    if cfg.controlnext_path is not None:
+        load_safetensors(controlnext, cfg.controlnext_path, strict=True)
     denoising_unet.to(device="cuda")
     reference_unet.to(device="cuda")
+    
     # Freeze
     vae.requires_grad_(False)
     denoising_unet.requires_grad_(False)
-    # for name, param in denoising_unet.named_parameters():
-    #     if "up_blocks.3" in name:
-    #         param.requires_grad_(True)
-    #     else:
-    #         param.requires_grad_(False)
+    for name, param in denoising_unet.named_parameters():
+        if "down_blocks" in name:
+            param.requires_grad_(True)
+        else:
+            param.requires_grad_(False)
     # denoising_unet.requires_grad_(True)
 
     reference_unet.requires_grad_(True)
     controlnext.requires_grad_(False)
     # controlnext.train()
+    reference_unet.train()
+    denoising_unet.train()
     reference_control_writer = ReferenceAttentionControl(
         reference_unet,
         do_classifier_free_guidance=False,

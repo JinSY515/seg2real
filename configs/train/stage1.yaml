@@ -1,5 +1,5 @@
 data:
-  train_bs: 4
+  train_bs: 8
   train_width: 512
   train_height: 512
   train_seg_width: 512
@@ -24,7 +24,7 @@ solver:
   max_train_steps: 500000
   max_grad_norm: 1.0
   # lr
-  learning_rate: 5.0e-6 #1.0e-5
+  learning_rate: 1.0e-5
   scale_lr: False
   lr_warmup_steps: 1
   lr_scheduler: 'constant'
@@ -50,8 +50,8 @@ noise_scheduler_kwargs:
 
 base_model_path: "/mnt/data4/siyoon/stable-diffusion-v1-5" #"/home/cvlab15/project/siyoon/i2i_control/checkpoints/sd-image-variations-diffusers" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-image-variations-diffusers'
 vae_model_path: "/mnt/data4/siyoon/stable-diffusion-v1-5/vae" #"stabilityai/sd-vae-ft-mse" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-vae-ft-mse'
-controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model.safetensors" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
-pretrained_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/controlnext.bin" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+pretrained_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
 controlnext_scale : 1.0
 
 weight_dtype: 'fp16'  # [fp16, fp32]
@@ -66,7 +66,7 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 200
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1012/controlnext_checkpoint4200/frozen_den_aug/all_w_both_textprompt_lr5.0e-6_res512_bs4x2'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1012/controlnext_checkpoint8400/unfreeze_down_aug/all_w_both_textprompt_lr1.0e-5_res512_bs8x1'
 
 validation:
   real_paths:
