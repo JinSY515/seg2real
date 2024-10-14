@@ -66,7 +66,7 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 200
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1012/controlnext_checkpoint8400/unfreeze_down_aug/all_w_both_textprompt_lr1.0e-5_res512_bs8x1'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1012/controlnext_checkpoint8400/unfreeze_up_aug/all_w_both_textprompt_lr1.0e-5_res512_bs8x1'
 
 validation:
   real_paths:
