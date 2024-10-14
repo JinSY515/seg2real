@@ -1,0 +1,26 @@
+CUDA_VISIBLE_DEVICES=5 accelerate launch train_controlnext_seg2real.py \
+ --pretrained_model_name_or_path="stable-diffusion-v1-5/stable-diffusion-v1-5" \
+ --output_dir="./output/checkpoints" \
+ --images_dir="./data/images/train" \
+ --conditioning_images_dir="./data/conditioning_images/train" \
+ --crop_output_dir='./output/cropped_imgs' \
+ --class_palette_path='./data/classes.txt' \
+ --resolution=512 \
+ --learning_rate=1e-5 \
+ --num_validation_images 1 \
+ --validation_image "./example/7d2f7975-e0c1c5a7.png" "./example/7d209219-ccdc1a09.png" "./example/7dc08598-f42e2015.png" "./example/7e5ef657-a9ad0001.png" "./example/7e788ad5-00000000.png" "./example/7ee5d536-808b2dd5.png" "./example/7f3656b9-ef39e56d.png" "./example/8a66084a-5158b84e.png" "./example/8dd5f9b7-00000000.png" "./example/8fd046f2-bb680001.png" "./example/9c2b6b1e-917011ce.png" "./example/9c94f476-8107ee6b.png" \
+ --validation_prompt "a photo of a real driving scene" \
+ --train_prompt "a photo of a real driving scene" \
+ --checkpoints_total_limit 3 \
+ --checkpointing_steps 600 \
+ --validation_steps 200 \
+ --num_train_epochs 50 \
+ --train_batch_size=16 \
+ --controlnext_scale 1\
+ --save_load_weights_increaments \
+ --enable_xformers_memory_efficient_attention \
+ --set_grads_to_none \
+ --mixed_precision "no"\
+ --crop_scale 1 \
+ --essential_class_ratio 0.1 \
+
