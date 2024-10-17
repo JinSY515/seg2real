@@ -320,12 +320,12 @@ def main(cfg):
     # Freeze
     vae.requires_grad_(False)
     
-    if args.train_mode.train_denoising:
+    if cfg.train_mode.train_denoising:
         denoising_unet.requires_grad_(True)
     else:
         denoising_unet.requires_grad_(False)
         for name, param in denoising_unet.named_parameters():
-            if "up_blocks" in name:
+            if "attn1." in name:
                 param.requires_grad_(True)
             else:
                 param.requires_grad_(False)

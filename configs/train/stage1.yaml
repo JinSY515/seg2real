@@ -24,7 +24,7 @@ solver:
   max_train_steps: 500000
   max_grad_norm: 1.0
   # lr
-  learning_rate: 1.0e-5
+  learning_rate: 5.0e-5
   scale_lr: False
   lr_warmup_steps: 1
   lr_scheduler: 'constant'
@@ -66,7 +66,7 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 200
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1012/controlnext_checkpoint8400/unfreeze_up_aug/all_w_both_textprompt_lr1.0e-5_res512_bs8x1'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1016/controlnext_checkpoint8400/whole_train_dataaug/all_w_both_textprompt_lr5.0e-5_res512_bs8x2'
 
 validation:
   real_paths:
