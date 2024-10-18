@@ -40,13 +40,19 @@ from torch.nn.parallel import DistributedDataParallel as DDP
 from tqdm.auto import tqdm
 from transformers import (CLIPTextModel, CLIPTextModelWithProjection,
                           CLIPTokenizer, CLIPVisionModelWithProjection)
-
+from src.models.matching_module import OurModel
+from src.models.attention import BasicTransformerBlock
+from src.models.attention_processor import MatchAttnProcessor
 warnings.filterwarnings("ignore")
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
 
 logger = get_logger(__name__, log_level="INFO")
-
+def torch_dfs(model: torch.nn.Module):
+    result = [model]
+    for child in model.children():
+        result += torch_dfs(child)
+    return result
 def load_safetensors(model, safetensors_path, strict=True, load_weight_increasement=False):
     if not load_weight_increasement:
         if safetensors_path.endswith('.safetensors'):
@@ -148,11 +154,40 @@ def compute_snr(noise_scheduler, timesteps):
     snr = (alpha / sigma) ** 2
     return snr
 
+def set_up_match_attn_processor_(blocks):
+    for m in torch_dfs(blocks):
+        
+        if isinstance(m, BasicTransformerBlock):
+            embed_dim = 32 
+            processor = MatchAttnProcessor(
+                embed_dim=embed_dim,
+                hidden_size=m.attn1.to_q.out_features,
+            )
+            processor.requires_grad_(True)
+            m.attn1.processor = processor 
+            
+def set_up_match_attn_processor(unet, fusion_blocks):
+    device, dtype = unet.conv_in.weight.device, unet.conv_in.weight.dtype
+    scale_idx=0
+    
+    if fusion_blocks == "full":
+        set_up_match_attn_processor_(unet.down_blocks)
+        set_up_match_attn_processor_(unet.mid_block)
+        set_up_match_attn_processor_(unet.up_blocks)
+    elif fusion_blocks == "midup":
+        set_up_match_attn_processor_(unet.mid_block)
+        set_up_match_attn_processor_(unet.up_blocks)
+    elif fusion_blocks == "down":
+        set_up_match_attn_processor_(unet.down_blocks)
+    elif fusion_blocks == "up":
+        set_up_match_attn_processor_(unet.up_blocks)
+    
 
 def log_validation(
     cfg,
     vae,
     net,
+    matcher,
     scheduler,
     accelerator,
     width,
@@ -175,7 +210,7 @@ def log_validation(
         denoising_unet=denoising_unet,
         pose_guider=controlnext,
         scheduler=scheduler,
-
+        matcher=matcher,
     )
     pipe = pipe.to(accelerator.device)
     ref_image_paths = cfg.validation.real_paths 
@@ -302,13 +337,7 @@ def main(cfg):
         cfg.base_model_path,
         subfolder="unet",
     )
-    # unet_sd = load_file("/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_01/checkpoint-7200/model_1.safetensors")#.to(device="cuda")
-    # unet_sd = load_file(cfg.pretrained_unet_path)
-    # reference_unet.load_state_dict(unet_sd)
-    # denoising_unet.load_state_dict(unet_sd)
-    controlnext = ControlNeXtModel(controlnext_scale=cfg.controlnext_scale)
-    # controlnext.load_state_dict(load_file(cfg.controlnext_path))
-    
+    controlnext = ControlNeXtModel(controlnext_scale=cfg.controlnext_scale)    
     if cfg.pretrained_unet_path is not None:
         load_safetensors(reference_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=True)
         load_safetensors(denoising_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=True)
@@ -317,25 +346,22 @@ def main(cfg):
     denoising_unet.to(device="cuda")
     reference_unet.to(device="cuda")
     
+    
+    matcher = OurModel().to(device="cuda")
+    # if cfg.pretrained_matching_module_path is not None:
+    #     matcher_sd = torch.load(cfg.pretrained_matching_module_path)
+    #     matcher.load_state_dict(matcher_sd)
+
+    if cfg.train_mode.train_matching_module:
+        
+        matcher.requires_grad_(True)
+        for n, p in matcher.named_parameters():
+            p.requires_grad = True
+    else:
+        matcher.requires_grad_(False)
     # Freeze
     vae.requires_grad_(False)
-    
-    if cfg.train_mode.train_denoising:
-        denoising_unet.requires_grad_(True)
-    else:
-        denoising_unet.requires_grad_(False)
-        for name, param in denoising_unet.named_parameters():
-            if "attn1." in name:
-                param.requires_grad_(True)
-            else:
-                param.requires_grad_(False)
-    # denoising_unet.requires_grad_(True)
 
-    reference_unet.requires_grad_(True)
-    controlnext.requires_grad_(False)
-    # controlnext.train()
-    reference_unet.train()
-    denoising_unet.train()
     reference_control_writer = ReferenceAttentionControl(
         reference_unet,
         do_classifier_free_guidance=False,
@@ -349,6 +375,35 @@ def main(cfg):
         fusion_blocks="full",
     )
 
+    
+
+    if cfg.solver.enable_xformers_memory_efficient_attention:
+        reference_unet.enable_xformers_memory_efficient_attention()
+        denoising_unet.enable_xformers_memory_efficient_attention()
+        controlnext.enable_xformers_memory_efficient_attention()
+    if cfg.train_mode.train_matching_module:
+        set_up_match_attn_processor(denoising_unet, fusion_blocks="full")
+        
+    if cfg.solver.gradient_checkpointing:
+        reference_unet.enable_gradient_checkpointing()
+        denoising_unet.enable_gradient_checkpointing()
+        controlnext.enable_gradient_checkpointing()
+    
+    if cfg.train_mode.train_denoising:
+        denoising_unet.requires_grad_(True)
+    else:
+        denoising_unet.requires_grad_(False)
+        for name, param in denoising_unet.named_parameters():
+            if "attn1." in name:
+                param.requires_grad_(True)
+            else:
+                param.requires_grad_(False)
+    reference_unet.requires_grad_(True)
+    controlnext.requires_grad_(False)
+    # controlnext.train()
+    reference_unet.train()
+    denoising_unet.train()
+    matcher.train()
     net = Net(
         reference_unet,
         denoising_unet,
@@ -358,15 +413,6 @@ def main(cfg):
     )
 
 
-    if cfg.solver.enable_xformers_memory_efficient_attention:
-        reference_unet.enable_xformers_memory_efficient_attention()
-        denoising_unet.enable_xformers_memory_efficient_attention()
-        controlnext.enable_xformers_memory_efficient_attention()
-
-    if cfg.solver.gradient_checkpointing:
-        reference_unet.enable_gradient_checkpointing()
-        denoising_unet.enable_gradient_checkpointing()
-        controlnext.enable_gradient_checkpointing()
     if cfg.solver.scale_lr:
         learning_rate = (
             cfg.solver.learning_rate
@@ -391,7 +437,7 @@ def main(cfg):
         optimizer_cls = torch.optim.AdamW
 
     _trainable = lambda m: [p for p in m.parameters() if p.requires_grad]
-    trainable_params = _trainable(net.reference_unet) +  _trainable(net.denoising_unet) + _trainable(net.controlnext)
+    trainable_params = _trainable(net.reference_unet) +  _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(matcher)
     optimizer = optimizer_cls(
         trainable_params,
         lr=learning_rate,
@@ -547,6 +593,16 @@ def main(cfg):
                 else: 
                     ref_seg_img = batch["ref_seg_image"]
                     
+                tgt_seg_img_resized = F.interpolate(tgt_seg_img, size=(32, 32), mode="bilinear", align_corners=False)
+                ref_seg_img_resized = F.interpolate(ref_seg_img, size=(32, 32), mode="bilinear", align_corners=False)
+                
+                seg_corr = []
+                for b in range(cfg.data.train_bs):
+                    seg_corr_ = (tgt_seg_img_resized[b, :, :, :, None, None] == ref_seg_img_resized[b, :, None, None, :, :]).all(dim=0)
+                    seg_corr.append(seg_corr_)
+                seg_corr = torch.stack(seg_corr)
+                # refined_seg_corr = matcher(seg_corr.unsqueeze(1).float().cpu())
+                # refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1], 32 * 32, 32 * 32)
                 if cfg.data.cond_mode == "multi_canny":
                     canny_cond_img = batch["canny_cond_image"]
                     content_img = torch.cat([tgt_seg_img, canny_cond_img], dim=1)
@@ -634,7 +690,14 @@ def main(cfg):
                     raise ValueError(
                         f"Unknown prediction type {train_noise_scheduler.prediction_type}"
                     )
-
+                
+                # with torch.no_grad():
+                refined_seg_corr = matcher(seg_corr.unsqueeze(1).float())
+                refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1], 32 * 32, 32 * 32)
+                for n, p in net.denoising_unet.attn_processors.items():
+                    if "attn1." in n:
+                        p.pred_residual = refined_seg_corr
+                        # p.is_train=True
                 model_pred = net(
                     noisy_latents,
                     timesteps,
@@ -646,10 +709,15 @@ def main(cfg):
                     content_img, 
                     uncond_fwd,
                 )
-
+                
+                # attn_maps = [p.attn_map for n, p in net.denoising_unet.attn_processors.items() if "attn1." in n]
+                # for attn in attn_maps:
+                #     attn_size = attn.shape[-1]
+                #     refined_seg_corr_resized = F.interpolate(refined_seg_corr, size=(attn_size // 2, attn_size // 2), mode='bilinear', align_corners=False)
+                #     attn[:,:,:, attn_size//2:] = attn[:,:,:,attn_size//2:] + refined_seg_corr_resized.to(device=attn.device)
+                
                 del seg_text_prompt_embeds, ref_text_prompt_embeds
                 torch.cuda.empty_cache()
-                # torch.autograd.set_detect_anomaly(True)
                 if cfg.snr_gamma == 0:
                     loss = F.mse_loss(
                         model_pred.float(), target.float(), reduction="mean"
@@ -685,7 +753,6 @@ def main(cfg):
                         trainable_params,
                         cfg.solver.max_grad_norm,
                     )
-                # import pdb; pdb.set_trace()
                 optimizer.step()
                 lr_scheduler.step()
                 optimizer.zero_grad()
@@ -715,6 +782,7 @@ def main(cfg):
                             cfg=cfg,
                             vae=vae,
                             net=net,
+                            matcher=matcher,
                             scheduler=val_noise_scheduler,
                             accelerator=accelerator,
                             width=cfg.data.train_width,

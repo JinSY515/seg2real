@@ -2,7 +2,7 @@ import inspect
 import json
 from dataclasses import dataclass
 from typing import Callable, List, Optional, Union
-
+import torch.nn.functional as F
 import numpy as np
 import torch
 from diffusers import DiffusionPipeline
@@ -41,6 +41,7 @@ class Pose2ImagePipeline(DiffusionPipeline):
             EulerAncestralDiscreteScheduler,
             DPMSolverMultistepScheduler,
         ],
+        matcher,
     ):
         super().__init__()
         self.tokenizer = CLIPTokenizer.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="tokenizer")
@@ -51,6 +52,7 @@ class Pose2ImagePipeline(DiffusionPipeline):
             denoising_unet=denoising_unet,
             pose_guider=pose_guider,
             scheduler=scheduler,
+            matcher=matcher,
         )
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
         self.clip_image_processor = CLIPImageProcessor()
@@ -238,7 +240,7 @@ class Pose2ImagePipeline(DiffusionPipeline):
         height = height or self.unet.config.sample_size * self.vae_scale_factor
         width = width or self.unet.config.sample_size * self.vae_scale_factor
 
-        device = self._execution_device
+        device = self.reference_unet.device #_execution_device
 
         do_classifier_free_guidance = guidance_scale > 1.0
 
@@ -304,6 +306,12 @@ class Pose2ImagePipeline(DiffusionPipeline):
         pose_cond_tensor = pose_cond_tensor.to(
             device=device, dtype=self.pose_guider.dtype
         )
+        ref_seg_image_resized =  F.interpolate(ref_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
+        pose_cond_tensor_resized =  F.interpolate(pose_cond_tensor, size=(32, 32), mode="bilinear", align_corners=False)
+        seg_corr = (ref_seg_image_resized[:, :, :, :, None, None] == pose_cond_tensor_resized[:,:, None,None, :,:]).all(dim=1)
+        refined_seg_corr = self.matcher(seg_corr.unsqueeze(1).float())
+        refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1],32*32, 32*32)
+        
         
         if cond_image is not None:
             condition_tensor = self.cond_image_processor.preprocess(
@@ -327,7 +335,7 @@ class Pose2ImagePipeline(DiffusionPipeline):
                 
         instance_prompt = "A photo of driving scene"
         for object in tgt_object_names:
-            instance_prompt += f" {object},s"
+            instance_prompt += f" {object}, "
         text_inputs = self.tokenizer(
             instance_prompt,
             truncation=True,
@@ -391,6 +399,11 @@ class Pose2ImagePipeline(DiffusionPipeline):
                     # 2. Update reference unet feature into denosing net
                     reference_control_reader.update(reference_control_writer)
 
+                # residual
+                # attn_maps = [p.attn_map for n, p in self.denoising_unet.attn_processors.items() if "attn1." in n]
+                for n, p in self.denoising_unet.attn_processors.items():
+                    if "attn1." in n:
+                        p.pred_residual = refined_seg_corr
                 # 3.1 expand the latents if we are doing classifier free guidance
                 latent_model_input = (
                     torch.cat([latents] * 2) if do_classifier_free_guidance else latents

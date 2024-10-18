@@ -15,6 +15,7 @@ from diffusers.models.attention_processor import (
     AttnAddedKVProcessor,
     AttnProcessor,
 )
+from src.models.attention_processor import MatchAttnProcessor
 from diffusers.models.embeddings import (
     GaussianFourierProjection,
     ImageHintTimeEmbedding,
@@ -667,6 +668,28 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
                 out_dim=cross_attention_dim,
                 feature_type=feature_type,
             )
+
+
+        # attn_procs = {}
+        # for name in self.attn_processors.keys():
+        #     cross_attention_dim = None if name.endswith("attn1.processor") else self.config.cross_attention_dim
+        #     if name.startswith("mid_block"):
+        #         hidden_size=self.config.block_out_channels[-1]
+        #     elif name.startswith("up_blocks"):
+        #         block_id = int(name[len("up_blocks.")])
+        #         hidden_size = list(reversed(self.config.block_out_channels))[block_id]
+        #     elif name.startswith("down_blocks"):
+        #         block_id = int(name[len("down_blocks.")])
+        #         hidden_size = self.config.block_out_channels[block_id]
+        #     if cross_attention_dim is None:
+        #         attn_procs[name] = AttnProcessor()
+        #     else:
+        #         layer_name = name.split(".processor")[0]
+        #         attn_procs[name] = MatchAttnProcessor(hidden_size=hidden_size, embed=)
+        # import pdb; pdb.set_trace()
+
+        # self.set_attn_processor(attn_procs)
+        # import pdb; pdb.set_trace()
 
     @property
     def attn_processors(self) -> Dict[str, AttentionProcessor]:

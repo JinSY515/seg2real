@@ -179,7 +179,6 @@ class ReferenceAttentionControl:
                     )
                 if MODE == "read":
                     bank_fea = self.bank
-                   
                     modify_norm_hidden_states = torch.cat(
                         [norm_hidden_states] + bank_fea, dim=1
                     )
@@ -190,7 +189,6 @@ class ReferenceAttentionControl:
                         encoder_hidden_states=modify_norm_hidden_states,
                         attention_mask=attention_mask,
                     )
-                        
                     hidden_states_uc = (
                         # self.attn1(
                         #     norm_hidden_states,
