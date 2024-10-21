@@ -381,23 +381,23 @@ class Pose2ImagePipeline(DiffusionPipeline):
                 # if image_prompt_embeds.ndim == 2:
                 #     image_prompt_embeds = image_prompt_embeds.unsqueeze(1)
                 
-                if i == 0:
-                    ref_controlnext_output = self.pose_guider(
-                        ref_seg_image, 
-                        torch.ones_like(t)
-                    )
-                    self.reference_unet(
-                        ref_image_latents.repeat(
-                            (2 if do_classifier_free_guidance else 1), 1, 1, 1
-                        ),
-                        torch.ones_like(t),
-                        encoder_hidden_states=ref_text_embeds,
-                        conditional_controls=ref_controlnext_output,
-                        return_dict=False,
-                    )
+                # if i == 0:
+                ref_controlnext_output = self.pose_guider(
+                    ref_seg_image, 
+                    t
+                )
+                self.reference_unet(
+                    ref_image_latents.repeat(
+                        (2 if do_classifier_free_guidance else 1), 1, 1, 1
+                    ),
+                    t,
+                    encoder_hidden_states=ref_text_embeds,
+                    conditional_controls=ref_controlnext_output,
+                    return_dict=False,
+                )
 
-                    # 2. Update reference unet feature into denosing net
-                    reference_control_reader.update(reference_control_writer)
+                # 2. Update reference unet feature into denosing net
+                reference_control_reader.update(reference_control_writer)
 
                 # residual
                 # attn_maps = [p.attn_map for n, p in self.denoising_unet.attn_processors.items() if "attn1." in n]

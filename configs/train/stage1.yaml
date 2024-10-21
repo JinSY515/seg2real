@@ -12,8 +12,8 @@ data:
   # sample_margin: 30
 train_mode:
   train_matching_module: True
-  train_semantic : True 
-  train_denoising : True 
+  train_semantic : False 
+  train_denoising : False 
   aug_mode : True
   consistent_timesteps: True 
 
@@ -68,7 +68,7 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 200
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1016/controlnext_checkpoint8400/whole_train_dataaug_consistenttimesteps/matching_module_res_lr5.0e-5_res512_bs2x2'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1016/controlnext_checkpoint8400/whole_train_dataaug_consistenttimesteps/matching_module_res_lr5.0e-5_res512_bs2x1'
 
 validation:
   real_paths:
@@ -84,11 +84,11 @@ validation:
       # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b4d9d4e7-00000000.jpg"
       # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b666b95d-ec6681ac.jpg"
   seg_paths:
-    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7d97d173-09388af3.jpg"
-    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7daa6479-67988f3f.jpg"
-    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7df23ae0-00000000.jpg"
-    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7ef50949-51640000.jpg"
-    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7f0b6105-00000000.jpg"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7d97d173-09388af3.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7daa6479-67988f3f.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7df23ae0-00000000.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7ef50949-51640000.png"
+    - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7f0b6105-00000000.png"
     - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7d2f7975-e0c1c5a7.png"
     - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7d209219-ccdc1a09.png"
     - "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7dc08598-f42e2015.png"

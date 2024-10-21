@@ -817,21 +817,21 @@ def main(cfg):
                 save_dir,
                 "reference_unet",
                 global_step,
-                total_limit=2,
+                total_limit=1,
             )
             save_checkpoint(
                 unwrap_net.denoising_unet,
                 save_dir,
                 "denoising_unet",
                 global_step,
-                total_limit=2,
+                total_limit=1,
             )
             save_checkpoint(
                 unwrap_net.controlnext,
                 save_dir,
                 "controlnext",
                 global_step,
-                total_limit=2,
+                total_limit=1,
             )
 
     # Create the pipeline using the trained modules and save it.
