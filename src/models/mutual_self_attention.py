@@ -181,7 +181,7 @@ class ReferenceAttentionControl:
                     bank_fea = self.bank
                     modify_norm_hidden_states = torch.cat(
                         [norm_hidden_states] + bank_fea, dim=1
-                    )
+                    ) # masactrl-like
               
                     # else :
                     out = self.attn1(
@@ -312,7 +312,7 @@ class ReferenceAttentionControl:
             attn_modules = sorted(
                 attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
-            # print(attn_modules)
+            print(attn_modules)
             
             for i, module in enumerate(attn_modules):
                 module._original_inner_forward = module.forward

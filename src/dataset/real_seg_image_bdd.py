@@ -8,7 +8,7 @@ import torch
 import torchvision.transforms as transforms
 from decord import VideoReader
 from PIL import Image
-from retrieval.data_retrieve import retrieve
+# from retrieval.data_retrieve import retrieve
 from torch.utils.data import Dataset
 from transformers import CLIPImageProcessor, CLIPTextModel, CLIPTokenizer
 

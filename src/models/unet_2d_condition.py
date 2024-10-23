@@ -21,7 +21,7 @@ from diffusers.models.embeddings import (
     ImageHintTimeEmbedding,
     ImageProjection,
     ImageTimeEmbedding,
-    PositionNet,
+    # PositionNet,
     TextImageProjection,
     TextImageTimeEmbedding,
     TextTimeEmbedding,
@@ -643,7 +643,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
         else:
             self.conv_norm_out = None
             self.conv_act = None
-        self.conv_norm_out = None
+        # self.conv_norm_out = None
 
         conv_out_padding = (conv_out_kernel - 1) // 2
         self.conv_out = nn.Conv2d(
@@ -1159,8 +1159,6 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
         # 2. pre-process
         sample = self.conv_in(sample)
 
-        if cond_fea is not None:
-            sample = sample + cond_fea
         # 2.5 GLIGEN position net
         if (
             cross_attention_kwargs is not None
@@ -1241,27 +1239,13 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
             if down_idx == 0 and conditional_controls is not None:
                 scale = conditional_controls['scale']
                 conditional_controls = conditional_controls['output']
-                conditional_controls = nn.functional.adaptive_avg_pool2d(conditional_controls, sample.shape[-2:])
-                conditional_controls = conditional_controls.to(sample)
-                mean_latents, std_latents = torch.mean(sample, dim=(1,2,3), keepdim=True), torch.std(sample, dim=(1,2,3),keepdim=True)
-                mean_control, std_control = torch.mean(conditional_controls, dim=(1,2,3), keepdim=True), torch.std(conditional_controls, dim=(1,2,3), keepdim=True)
-                conditional_controls = (conditional_controls - mean_control) * (std_latents / (std_control + 1e-12)) + mean_latents 
-                sample = sample + conditional_controls * scale  
-                
-        if is_controlnet:
-            new_down_block_res_samples = ()
+                conditional_controls=nn.functional.adaptive_avg_pool2d(conditional_controls, sample.shape[-2:])
+                conditional_controls = conditional_controls.to(sample)                
+                mean_latents, std_latents = torch.mean(sample, dim=(1, 2, 3), keepdim=True), torch.std(sample, dim=(1, 2, 3), keepdim=True)
+                mean_control, std_control = torch.mean(conditional_controls, dim=(1, 2, 3), keepdim=True), torch.std(conditional_controls, dim=(1, 2, 3), keepdim=True)
+                conditional_controls = (conditional_controls - mean_control) * (std_latents / (std_control + 1e-12)) + mean_latents
+                sample = sample + conditional_controls * scale
 
-            for down_block_res_sample, down_block_additional_residual in zip(
-                down_block_res_samples, down_block_additional_residuals
-            ):
-                down_block_res_sample = (
-                    down_block_res_sample + down_block_additional_residual
-                )
-                new_down_block_res_samples = new_down_block_res_samples + (
-                    down_block_res_sample,
-                )
-
-            down_block_res_samples = new_down_block_res_samples
 
         # 4. mid
         if self.mid_block is not None:
@@ -1288,8 +1272,6 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
             ):
                 sample += down_intrablock_additional_residuals.pop(0)
 
-        if is_controlnet:
-            sample = sample + mid_block_additional_residual
 
         # 5. up
         for i, upsample_block in enumerate(self.up_blocks):
@@ -1325,7 +1307,7 @@ class UNet2DConditionModel(ModelMixin, ConfigMixin, UNet2DConditionLoadersMixin)
                     temb=emb,
                     res_hidden_states_tuple=res_samples,
                     upsample_size=upsample_size,
-                    scale=lora_scale,
+                    # scale=lora_scale,
                 )
 
         # 6. post-process

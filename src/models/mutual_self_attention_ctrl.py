@@ -5,6 +5,8 @@ import torch
 from einops import rearrange
 
 from .attention import BasicTransformerBlock
+import torch.nn.functional as F
+
 # from diffusers.models.attention import BasicTransformerBlock, Attention
 # from src.utils.viz import save_in_colormap
 def torch_dfs(model: torch.nn.Module):
@@ -15,46 +17,34 @@ def torch_dfs(model: torch.nn.Module):
 
 T = torch.Tensor
 
-# def expand_first(feat: T, scale=1.,) -> T:
-#     b = feat.shape[0]
-#     feat_style = torch.stack((feat[0], feat[b // 2])).unsqueeze(1)
-#     if scale == 1:
-#         feat_style = feat_style.expand(2, b // 2, *feat.shape[1:])
-#     else:
-#         feat_style = feat_style.repeat(1, b // 2, 1, 1, 1)
-#         feat_style = torch.cat([feat_style[:, :1], scale * feat_style[:, 1:]], dim=1)
-#     return feat_style.reshape(*feat.shape)
-
-def expand_first(feat: torch.Tensor, scale=1.) -> T:
-    b, c, *rest = feat.shape
-    feat_style = torch.stack((feat[:, :c // 2], feat[:, c // 2:])).unsqueeze(2)
+def expand_first(feat: T, scale=1.,) -> T:
+    b = feat.shape[0]
+    feat_style = torch.stack((feat[0], feat[b // 2])).unsqueeze(1)
     if scale == 1:
-        feat_style = feat_style.expand(b, 2, c // 2, *rest)
+        feat_style = feat_style.expand(2, b // 2, *feat.shape[1:])
     else:
-        feat_style = feat_style.repeat(1, 1, c // 2, 1, 1)
-        feat_style = torch.cat([feat_style[:, :1], scale * feat_style[:, 1:]], dim=2)
+        feat_style = feat_style.repeat(1, b // 2, 1, 1, 1)
+        feat_style = torch.cat([feat_style[:, :1], scale * feat_style[:, 1:]], dim=1)
     return feat_style.reshape(*feat.shape)
 
-def concat_first(feat: torch.Tensor, dim=2, scale=1.) -> T:
+
+def concat_first(feat: T, dim=2, scale=1.) -> T:
     feat_style = expand_first(feat, scale=scale)
     return torch.cat((feat, feat_style), dim=dim)
 
-def calc_mean_std(feat: torch.Tensor, eps: float = 1e-5) -> [T, T]:
-    feat_std = (feat.var(dim=-1, keepdim=True) + eps).sqrt()
-    feat_mean = feat.mean(dim=-1, keepdim=True)
+
+def calc_mean_std(feat, eps: float = 1e-5) -> tuple[T, T]:
+    feat_std = (feat.var(dim=-2, keepdims=True) + eps).sqrt()
+    feat_mean = feat.mean(dim=-2, keepdims=True)
     return feat_mean, feat_std
 
-def adain(feat: torch.Tensor) -> T:
-    content_feat, style_feat = torch.split(feat, feat.shape[1] // 2, dim=1)
-    
-    # Calculate mean and std for content and style features
-    content_mean, content_std = calc_mean_std(content_feat)
-    style_mean, style_std = calc_mean_std(style_feat)
-    
-    # Normalize content features and apply style statistics
-    normalized_feat = (content_feat - content_mean) / content_std
-    stylized_feat = normalized_feat * style_std + style_mean
-    feat = torch.cat([normalized_feat, stylized_feat], dim=1)
+
+def adain(feat: T) -> T:
+    feat_mean, feat_std = calc_mean_std(feat)
+    feat_style_mean = expand_first(feat_mean)
+    feat_style_std = expand_first(feat_std)
+    feat = (feat - feat_mean) / feat_std
+    feat = feat * feat_style_std + feat_style_mean
     return feat
 
 class ReferenceAttentionControl:
@@ -189,48 +179,26 @@ class ReferenceAttentionControl:
                     )
                 if MODE == "read":
                     bank_fea = self.bank
-                    modify_norm_hidden_states = torch.cat(
-                        [norm_hidden_states] + bank_fea, dim=1
+                    # modify_norm_hidden_states = torch.cat(
+                    #     [norm_hidden_states] + bank_fea, dim=1
+                    # ) # masactrl-like
+                    modify_norm_hidden_states = norm_hidden_states
+                    # else :
+                    out = self.attn1(
+                        norm_hidden_states,
+                        encoder_hidden_states=modify_norm_hidden_states,
+                        attention_mask=attention_mask,
                     )
-                    modify_norm_hidden_states = adain(modify_norm_hidden_states)
-                    # if len(bank_fea) != 0:
-                    #     t_bank_fea = torch.Tensor(bank_fea[0])
-                    #     k_adain = adain(modify_norm_hidden_states)
-                    #     ###  self attention map 
-                    #     query = self.attn1.to_q(norm_hidden_states.detach().float())
-                    #     key = self.attn1.to_k(k_adain.detach().float())
-                    #     value = self.attn1.to_v(modify_norm_hidden_states.detach().float())
-                    #     query = self.attn1.head_to_batch_dim(query)[0][None]
-                    #     key = self.attn1.head_to_batch_dim(key)[0][None]
-                    #     value = self.attn1.head_to_batch_dim(value)[0][None]
-                    #     norm_src_features = torch.linalg.norm(query, dim=2, keepdim=True)
-                    #     norm_tgt_features = torch.linalg.norm(key, dim=2, keepdim=True)
-                    #     sim = torch.einsum("b i d, b j d -> b i j", key, query) # attn
-                    #     sim /= norm_tgt_features * norm_src_features.transpose(1,2) 
-                    #     sim = torch.softmax(sim, dim=-1) # softmax
-                        
-                    #     attention_probs = self.attn1.get_attention_scores(query, key, attention_mask)
-                    #     # mean = torch.bmm(sim, norm_src_features)
-                    #     # std = torch.sqrt(torch.relu(torch.bmm(sim, norm_src_features ** 2) - mean ** 2))
-                    #     import pdb; pdb.set_trace()
-                    #     # hidden_states = std * hidden_states + mean
-                    # if len(bank_fea) != 0:
-                    #     hs = self.attn1.batch_to_head_dim(torch.bmm(attention_probs, value))
-                    #     hs = self.attn1.to_out[0](hs)
-                    #     hidden_states_uc = hs + hidden_states
-                    
-                    
                     hidden_states_uc = (
-                        self.attn1(
-                            norm_hidden_states,
-                            encoder_hidden_states=modify_norm_hidden_states,
-                            attention_mask=attention_mask,
-                        )
+                        # self.attn1(
+                        #     norm_hidden_states,
+                        #     encoder_hidden_states=modify_norm_hidden_states,
+                        #     attention_mask=attention_mask,
+                        # )
+                        out
                         + hidden_states
                     )
-
-                    
-                    
+                        
                     if do_classifier_free_guidance:
                         hidden_states_c = hidden_states_uc.clone()
                         _uc_mask = uc_mask.clone()
@@ -344,6 +312,8 @@ class ReferenceAttentionControl:
             attn_modules = sorted(
                 attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
+            # print(attn_modules)
+            
             for i, module in enumerate(attn_modules):
                 module._original_inner_forward = module.forward
                 if isinstance(module, BasicTransformerBlock):
@@ -389,6 +359,11 @@ class ReferenceAttentionControl:
                     for module in torch_dfs(self.unet.up_blocks)
                     if isinstance(module, BasicTransformerBlock)
                 ]
+                writer_attn_modules = [
+                    module
+                    for module in torch_dfs(writer.unet.up_blocks)
+                    if isinstance(module, BasicTransformerBlock)
+                ]
             reader_attn_modules = sorted(
                 reader_attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
@@ -398,7 +373,7 @@ class ReferenceAttentionControl:
             
             for r, w in zip(reader_attn_modules, writer_attn_modules):
                 r.bank = [v.clone().to(dtype) for v in w.bank]
-                # w.bank.clear()
+                w.bank.clear()
 
     def clear(self):
         if self.reference_attn:

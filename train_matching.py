@@ -23,7 +23,8 @@ import transformers
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import DistributedDataParallelKwargs
-from diffusers import (AutoencoderKL,  DDIMScheduler,
+from diffusers import (AutoencoderKL,  DDIMScheduler, UniPCMultistepScheduler,
+                        DDPMScheduler,
                        StableDiffusionControlNetPipeline)
 from diffusers.optimization import get_scheduler
 from omegaconf import OmegaConf
@@ -31,8 +32,10 @@ from PIL import Image
 from src.dataset.real_seg_image_bdd import RealSegDataset
 from src.models.mutual_self_attention import ReferenceAttentionControl
 from src.models.unet_2d_condition import UNet2DConditionModel
+# from src.models.unet import UNet2DConditionModel
 from src.models.controlnext import ControlNeXtModel
-from src.pipelines.pipeline_pose2img import Pose2ImagePipeline
+# from src.pipelines.pipeline_pose2img import Pose2ImagePipeline
+from src.pipelines.pipeline_seg2real_controlnext import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
 from src.utils.util import (delete_additional_ckpt, import_filename,
                             seed_everything)
 from torch.cuda.amp import GradScaler
@@ -42,7 +45,9 @@ from transformers import (CLIPTextModel, CLIPTextModelWithProjection,
                           CLIPTokenizer, CLIPVisionModelWithProjection)
 from src.models.matching_module import OurModel
 from src.models.attention import BasicTransformerBlock
+# from diffusers.models.attention import BasicTransformerBlock
 from src.models.attention_processor import MatchAttnProcessor
+from diffusers.models.attention_processor import XFormersAttnProcessor 
 warnings.filterwarnings("ignore")
 torch.backends.cudnn.benchmark = True
 torch.backends.cudnn.enabled = True
@@ -165,7 +170,6 @@ def set_up_match_attn_processor_(blocks):
             )
             processor.requires_grad_(True)
             m.attn1.processor = processor 
-            
 def set_up_match_attn_processor(unet, fusion_blocks):
     device, dtype = unet.conv_in.weight.device, unet.conv_in.weight.dtype
     scale_idx=0
@@ -195,7 +199,6 @@ def log_validation(
     cond_mode,
 ):
     logger.info("Running validation... ")
-
     ori_net = accelerator.unwrap_model(net)
     reference_unet = ori_net.reference_unet
     denoising_unet = ori_net.denoising_unet
@@ -208,10 +211,11 @@ def log_validation(
         vae=vae,
         reference_unet=reference_unet,
         denoising_unet=denoising_unet,
-        pose_guider=controlnext,
+        controlnext=controlnext,
         scheduler=scheduler,
         matcher=matcher,
     )
+    
     pipe = pipe.to(accelerator.device)
     ref_image_paths = cfg.validation.real_paths 
     pose_image_paths = cfg.validation.seg_paths
@@ -226,24 +230,36 @@ def log_validation(
             ref_seg_path = ref_image_path.replace("/images/10k/val/","/labels/10k/sem_seg/colormaps/val/").replace(".jpg", ".png")
             ref_seg_pil = Image.open(ref_seg_path).convert("RGB")
             cond_image_pil = None
+            # image = pipe(
+            #     ref_image_pil,
+            #     ref_seg_pil,
+            #     pose_image_pil,
+            #     cond_image_pil,
+            #     val_json, 
+            #     ref_name, 
+            #     pose_name,
+            #     # ref_json,
+            #     # pose_json,
+            #     width,
+            #     height,
+            #     20,
+            #     1.0,
+            #     generator=generator,
+            # ).images
             image = pipe(
-                ref_image_pil,
-                ref_seg_pil,
-                pose_image_pil,
-                cond_image_pil,
-                val_json, 
-                ref_name, 
-                pose_name,
-                # ref_json,
-                # pose_json,
-                width,
-                height,
-                20,
-                1.0,
+                prompt="A photo of a real driving scene",
+                ref_image=ref_image_pil,
+                ref_seg_image=ref_seg_pil,
+                tgt_seg_image=pose_image_pil,
+                height=height,
+                width=width,
+                num_inference_steps=20,
+                guidance_scale=1.0,
                 generator=generator,
             ).images
-            image = image[0].permute(1, 2, 0).cpu().numpy()  # (3, 512, 512)
-            res_image_pil = Image.fromarray((image * 255).astype(np.uint8))
+            res_image_pil = image[0]
+            # image = image[0].permute(1, 2, 0).cpu().numpy()  # (3, 512, 512)
+            # res_image_pil = Image.fromarray((image * 255).astype(np.uint8))
             # Save ref_image, src_image and the generated_image
             w, h = res_image_pil.size
             if cond_image_pil is not None:
@@ -321,9 +337,19 @@ def main(cfg):
             timestep_spacing="trailing",
             prediction_type="v_prediction",
         )
-    val_noise_scheduler = DDIMScheduler(**sched_kwargs)
+    sched_kwargs.update(
+        # rescale_betas_zero_snr=True,
+        timestep_spacing="leading",
+    )
     sched_kwargs.update({"beta_schedule": "scaled_linear"})
-    train_noise_scheduler = DDIMScheduler(**sched_kwargs)
+    # val_noise_scheduler = DDIMScheduler(**sched_kwargs)
+    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs)
+
+    sched_kwargs.update(
+        clip_sample=False
+    )
+    # train_noise_scheduler = DDIMScheduler(**sched_kwargs)
+    train_noise_scheduler = DDPMScheduler(**sched_kwargs)
     vae = AutoencoderKL.from_pretrained(cfg.vae_model_path).to(
         "cuda", dtype=weight_dtype
     )
@@ -345,7 +371,6 @@ def main(cfg):
         load_safetensors(controlnext, cfg.controlnext_path, strict=True)
     denoising_unet.to(device="cuda")
     reference_unet.to(device="cuda")
-    
     
     matcher = OurModel().to(device="cuda")
     # if cfg.pretrained_matching_module_path is not None:
@@ -376,14 +401,13 @@ def main(cfg):
     )
 
     
-
-    if cfg.solver.enable_xformers_memory_efficient_attention:
-        reference_unet.enable_xformers_memory_efficient_attention()
-        denoising_unet.enable_xformers_memory_efficient_attention()
-        controlnext.enable_xformers_memory_efficient_attention()
+    # if cfg.solver.enable_xformers_memory_efficient_attention:
+    reference_unet.enable_xformers_memory_efficient_attention()
+    denoising_unet.enable_xformers_memory_efficient_attention()
+    controlnext.enable_xformers_memory_efficient_attention()
+    # import pdb; pdb.set_trace()
     if cfg.train_mode.train_matching_module:
         set_up_match_attn_processor(denoising_unet, fusion_blocks="full")
-        
     if cfg.solver.gradient_checkpointing:
         reference_unet.enable_gradient_checkpointing()
         denoising_unet.enable_gradient_checkpointing()
@@ -393,12 +417,15 @@ def main(cfg):
         denoising_unet.requires_grad_(True)
     else:
         denoising_unet.requires_grad_(False)
-        for name, param in denoising_unet.named_parameters():
-            if "attn1." in name:
-                param.requires_grad_(True)
-            else:
-                param.requires_grad_(False)
-    reference_unet.requires_grad_(True)
+        # for name, param in denoising_unet.named_parameters():
+        #     if "attn1." in name:
+        #         param.requires_grad_(True)
+        #     else:
+        #         param.requires_grad_(False)
+    if cfg.train_mode.train_semantic:
+        reference_unet.requires_grad_(True)
+    else:
+        reference_unet.requires_grad_(False)
     controlnext.requires_grad_(False)
     # controlnext.train()
     reference_unet.train()
@@ -411,7 +438,6 @@ def main(cfg):
         reference_control_writer,
         reference_control_reader,
     )
-
 
     if cfg.solver.scale_lr:
         learning_rate = (
@@ -519,6 +545,8 @@ def main(cfg):
         f"  Gradient Accumulation steps = {cfg.solver.gradient_accumulation_steps}"
     )
     logger.info(f"  Total optimization steps = {cfg.solver.max_train_steps}")
+    logger.info
+
     global_step = 0
     first_epoch = 0
 
@@ -694,8 +722,9 @@ def main(cfg):
                 # with torch.no_grad():
                 refined_seg_corr = matcher(seg_corr.unsqueeze(1).float())
                 refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1], 32 * 32, 32 * 32)
+         
                 for n, p in net.denoising_unet.attn_processors.items():
-                    if "attn1." in n:
+                    if "attn1." in n and p is not None:
                         p.pred_residual = refined_seg_corr
                         # p.is_train=True
                 model_pred = net(

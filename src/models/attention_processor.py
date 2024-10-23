@@ -39,7 +39,7 @@ class MatchAttnProcessor(nn.Module):
         #     self.norm = None
         # self.proj = nn.Linear(embed_dim, hidden_size, bias=False)
         # nn.init.zeros_(self.proj.weight)
-
+        self.pred_residual=None
         if not hasattr(F, "scaled_dot_product_attention"):
             raise ImportError(
                 "MatchAttnProcessor requires PyTorch 2.0, to use it, please upgrade PyTorch to 2.0."
@@ -61,7 +61,7 @@ class MatchAttnProcessor(nn.Module):
         if len(args) > 0 or kwargs.get("scale", None) is not None:
             deprecation_message = "The `scale` argument is deprecated and will be ignored. Please remove it, as passing it will raise an error in the future. `scale` should directly be passed while calling the underlying pipeline component i.e., via `cross_attention_kwargs`."
             deprecate("scale", "1.0.0", deprecation_message)
-
+        
         residual = hidden_states
         if attn.spatial_norm is not None:
             hidden_states = attn.spatial_norm(hidden_states, temb)
@@ -130,7 +130,6 @@ class MatchAttnProcessor(nn.Module):
         query = query.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
         key = key.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
         value = value.view(batch_size, -1, attn.heads, head_dim).transpose(1, 2)
-
         # the output of sdp = (batch, num_heads, seq_len, head_dim)
         # TODO: add support for attn.scale when we move to Torch 2.1
         # hidden_states = F.scaled_dot_product_attention(
@@ -143,7 +142,6 @@ class MatchAttnProcessor(nn.Module):
         dropout_p=0.0
         scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
         # attn_bias = torch.zeros(L, S, dtype=query.dtype)
-
         # self.attn_map = query @ key.transpose(-2, -1) * scale_factor
         # self.attn_map = self.attn_map + attn_bias
         self.attn_map = query @ key.transpose(-2, -1) * scale_factor
