@@ -1,0 +1,13 @@
+export OUTPUT_DIR="/home/cvlab15/project/siyoon/controlnet"
+export MODEL_DIR="runwayml/stable-diffusion-v1-5"
+CUDA_VISIBLE_DEVICES=6 python train_controlnet.py \
+ --pretrained_model_name_or_path=$MODEL_DIR \
+ --output_dir=$OUTPUT_DIR \
+ --real_images_path="/mnt/data4/siyoon/bdd100k/bdd100k/images/100k/train/" \
+ --seg_images_path="/mnt/data4/siyoon/bdd100k/bdd100k/labels/sem_seg/colormaps/train/" \
+ --resolution=512 \
+ --learning_rate=1e-5 \
+ --train_batch_size=4 \
+ --validation_steps=200 \
+ --checkpointing_steps=200 \
+ #--pretrained_unet_name_or_path="/home/cvlab15/project/jeeyoung/checkpoints_all_imgs_3/reference_unet-1800.pth"
