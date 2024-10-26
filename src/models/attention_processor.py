@@ -145,14 +145,7 @@ class MatchAttnProcessor(nn.Module):
         # self.attn_map = query @ key.transpose(-2, -1) * scale_factor
         # self.attn_map = self.attn_map + attn_bias
         self.attn_map = query @ key.transpose(-2, -1) * scale_factor
-        import matplotlib.pyplot as plt 
-        import seaborn as sns
-        def visualize_attention(attn_map, title):
-            plt.figure(figsize=(10, 8))
-            sns.heatmap(attn_map.detach().cpu().numpy(), cmap="viridis")
-            plt.title(title)
-            plt.show()
-            plt.savefig('mha.png')
+     
         
         
         if self.matcher is not None:
@@ -172,14 +165,43 @@ class MatchAttnProcessor(nn.Module):
             #     refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
             #     # import pdb; pdb.set_trace()
             #     self.attn_map[:,head,:,attn_size//2:] = self.attn_map[:,head,:, attn_size//2:] + refined_seg_corr.squeeze(1)#.repeat(1, self.attn_map.shape[1], 1, 1)
-       
-            corr_input = torch.cat([F.interpolate(self.attn_map[:, :, :, attn_size//2:].mean(1).unsqueeze(1).clone().detach(), size=(32*32, 32*32), mode='bilinear', align_corners=False), self.seg_corr.float().detach().unsqueeze(1)], dim=1)
-            corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
-            refined_seg_corr = self.matcher(corr_input)
-            refined_seg_corr = rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)')
-            refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
-            self.attn_map[:,:,:,attn_size//2:] = self.attn_map[:,:,:, attn_size//2:] + refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1)
-       
+
+            if attn_size != 8192:
+                
+                corr_input = torch.cat([
+                    self.attn_map[:, :, :, attn_size // 2:].mean(1).unsqueeze(1).clone().detach(),
+                    F.interpolate(self.seg_corr.float().unsqueeze(1), size=(attn_size // 2, attn_size // 2), mode="nearest")
+                ], dim=1)
+
+                attn_size_sqrt = int(math.sqrt(attn_size // 2))
+                corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=attn_size_sqrt, ws=attn_size_sqrt, ht=attn_size_sqrt, wt=attn_size_sqrt)
+                refined_seg_corr = self.matcher(corr_input)
+                temp_ = refined_seg_corr.max()
+                refined_seg_corr = ((rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)')) - temp_ / 2)  # * attn_size_sqrt 
+                self.attn_map[:, :, :, attn_size//2: ] = self.attn_map[:, :, :, attn_size // 2:] + refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1)
+                # corr_input = torch.cat([F.interpolate(self.attn_map[:, :, :, attn_size//2:].mean(1).unsqueeze(1).clone().detach(), size=(32*32, 32*32), mode='bilinear', align_corners=False), self.seg_corr.float().unsqueeze(1)], dim=1)
+                # corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
+                # refined_seg_corr = self.matcher(corr_input)
+                # refined_seg_corr = rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)')
+                # refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
+                print(refined_seg_corr) 
+                print(self.attn_map.max(), self.attn_map.min(), refined_seg_corr.max(), refined_seg_corr.min(), int(math.sqrt(attn_size // 2)))
+                # self.attn_map[:,:,:,attn_size//2:] = self.attn_map[:,:,:, attn_size//2:] + (refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1) - 4)
+            else:
+                attn_size_sqrt = int(math.sqrt(attn_size // 2))
+                corr_input = torch.cat([F.interpolate(self.attn_map[:, :, :, attn_size//2:].mean(1).unsqueeze(1).clone().detach(), size=(32*32, 32*32), mode='bilinear', align_corners=False), self.seg_corr.float().unsqueeze(1)], dim=1)
+                corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
+                refined_seg_corr = self.matcher(corr_input)
+                temp_ = refined_seg_corr.max() 
+                refined_seg_corr = (rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)') - temp_/2) * attn_size_sqrt
+                
+                refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
+                
+                self.attn_map[:,:,:,attn_size//2:] = self.attn_map[:,:,:, attn_size//2:] + (refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1))
+
+
+        torch.cuda.empty_cache() 
+        del refined_seg_corr
         attn_weight = self.attn_map
         attn_weight = torch.softmax(attn_weight, dim=-1)
         # self.is_train = False

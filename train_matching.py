@@ -11,7 +11,7 @@ from datetime import datetime
 from pathlib import Path
 from tempfile import TemporaryDirectory
 from safetensors.torch import load_file, save_file
-
+import itertools
 import diffusers
 import mlflow
 import numpy as np
@@ -23,8 +23,7 @@ import transformers
 from accelerate import Accelerator
 from accelerate.logging import get_logger
 from accelerate.utils import DistributedDataParallelKwargs
-from diffusers import (AutoencoderKL,  DDIMScheduler, UniPCMultistepScheduler,
-                        DDPMScheduler,
+from diffusers import (AutoencoderKL,DDIMScheduler, UniPCMultistepScheduler,DDPMScheduler,
                        StableDiffusionControlNetPipeline)
 from diffusers.optimization import get_scheduler
 from omegaconf import OmegaConf
@@ -47,7 +46,8 @@ from src.models.matching_module import OurModel
 from src.models.attention import BasicTransformerBlock
 # from diffusers.models.attention import BasicTransformerBlock
 from src.models.attention_processor import MatchAttnProcessor
-from diffusers.models.attention_processor import XFormersAttnProcessor 
+from diffusers.models.attention_processor import XFormersAttnProcessor, LoRAXFormersAttnProcessor
+from diffusers.loaders import AttnProcsLayers
 from einops import rearrange
 warnings.filterwarnings("ignore")
 torch.backends.cudnn.benchmark = True
@@ -118,7 +118,6 @@ class Net(nn.Module):
 
         self.reference_control_reader.update(self.reference_control_writer)
         
-        # import pdb; pdb.set_trace()
         den_controlnext_output = self.controlnext(content_img, timesteps)
         
         model_pred = self.denoising_unet(
@@ -165,7 +164,6 @@ def compute_snr(noise_scheduler, timesteps):
 
 def set_up_match_attn_processor_(blocks):
     for m in torch_dfs(blocks):
-        
         if isinstance(m, BasicTransformerBlock):
             embed_dim = 32 
             processor = MatchAttnProcessor(
@@ -174,6 +172,61 @@ def set_up_match_attn_processor_(blocks):
             )
             processor.requires_grad_(True)
             m.attn1.processor = processor 
+
+def set_up_lora_attn_processor_(unet, blocks, fuse_block="down"):
+    blocks = [m for m in torch_dfs(blocks) if isinstance(m,BasicTransformerBlock)]
+    for idx, m in enumerate(blocks):
+        # if fuse_block=="down":
+        #     hidden_size =unet.config.block_out_channels[-1]
+        # elif fuse_block =="mid":
+        #     block_id = idx
+        #     hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+        # elif fuse_block=="up":
+        #     block_id=idx 
+        #     hidden_size = unet.config.blocks[block_id]
+        processor = LoRAXFormersAttnProcessor(
+            hidden_size=m.attn1.to_q.out_features,
+            cross_attention_dim=None
+        )
+        processor.requires_grad_(True)
+        m.attn1.processor = processor 
+   
+
+def set_up_lora_attn_processor(unet, fusion_blocks="full"):
+    if fusion_blocks == "full":
+        set_up_lora_attn_processor_(unet, unet.down_blocks, fuse_block="down")
+        set_up_lora_attn_processor_(unet, unet.mid_block, fuse_block="mid")
+        set_up_lora_attn_processor_(unet, unet.up_blocks, fuse_block="up")
+    elif fusion_blocks == "midup":
+        set_up_lora_attn_processor_(unet, unet.mid_block, fuse_block="mid")
+        set_up_lora_attn_processor_(unet, unet.up_blocks, fuse_block="up")
+    elif fusion_blocks == "up":
+        set_up_lora_attn_processor_(unet, unet.up_blocks, fuse_block="up")
+    # lora_layers = AttnProcsLayers(unet.attn_processors)
+    # return lora_layers
+# def set_up_lora_attn_processor(unet):
+#     lora_attn_procs = {}
+#     for name in unet.attn_processors.keys():
+#         cross_attention_dim = None if name.endswith("attn1.processor") else unet.config.cross_attention_dim
+#         if name.startswith("mid_block"):
+#             hidden_size = unet.config.block_out_channels[-1]
+#         elif name.startswith("up_blocks"):
+#             block_id = int(name[len("up_blocks.")])
+#             hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+#         elif name.startswith("down_blocks"):
+#             block_id = int(name[len("down_blocks.")])
+#             hidden_size = unet.config.block_out_channels[block_id]
+
+#         lora_attn_procs[name] = LoRAXFormersAttnProcessor(
+#             hidden_size=hidden_size, cross_attention_dim=cross_attention_dim
+#         )
+#         lora_attn_procs[name].requires_grad_(True)
+#     unet.set_attn_processor(lora_attn_procs)
+#     lora_layers = AttnProcsLayers(unet.attn_processors)
+#     for p in lora_layers.parameters():
+#         p.requires_grad_(True)
+#     return lora_layers
+        
 def set_up_match_attn_processor(unet, fusion_blocks):
     device, dtype = unet.conv_in.weight.device, unet.conv_in.weight.dtype
     scale_idx=0
@@ -211,6 +264,8 @@ def log_validation(
     # cast unet dtype
     vae = vae.to(dtype=torch.float32)
 
+    if cfg.train_mode.consistent_timesteps:
+        from src.pipelines.pipeline_seg2real_controlnext_consistent import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
     pipe = Pose2ImagePipeline(
         vae=vae,
         reference_unet=reference_unet,
@@ -260,6 +315,9 @@ def log_validation(
                 num_inference_steps=20,
                 guidance_scale=1.0,
                 generator=generator,
+                val_json=val_json,
+                ref_name=ref_name,
+                tgt_name=pose_name,
             ).images
             res_image_pil = image[0]
             # image = image[0].permute(1, 2, 0).cpu().numpy()  # (3, 512, 512)
@@ -333,27 +391,29 @@ def main(cfg):
         raise ValueError(
             f"Do not support weight dtype: {cfg.weight_dtype} during training"
         )
-
-    sched_kwargs = OmegaConf.to_container(cfg.noise_scheduler_kwargs)
-    if cfg.enable_zero_snr:
-        sched_kwargs.update(
-            rescale_betas_zero_snr=True,
-            timestep_spacing="trailing",
-            prediction_type="v_prediction",
-        )
-    sched_kwargs.update(
-        # rescale_betas_zero_snr=True,
+    # sched_kwargs = OmegaConf.to_container(cfg.noise_scheduler_kwargs)
+    sched_kwargs_train = OmegaConf.to_container(cfg.noise_scheduler_kwargs)
+    sched_kwargs_val = OmegaConf.to_container(cfg.noise_scheduler_kwargs)
+    # if cfg.enable_zero_snr:
+    #     sched_kwargs.update(
+    #         rescale_betas_zero_snr=True,
+    #         timestep_spacing="trailing",
+    #         # prediction_type="v_prediction",
+    #     )
+    sched_kwargs_val.update(
+        rescale_betas_zero_snr=True,
         timestep_spacing="leading",
     )
-    sched_kwargs.update({"beta_schedule": "scaled_linear"})
+    sched_kwargs_val.update({"beta_schedule": "scaled_linear"})
     # val_noise_scheduler = DDIMScheduler(**sched_kwargs)
-    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs)
+    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs_val)
 
-    sched_kwargs.update(
+    sched_kwargs_train.update({"beta_schedule": "scaled_linear"})
+    sched_kwargs_train.update(
         clip_sample=False
     )
     # train_noise_scheduler = DDIMScheduler(**sched_kwargs)
-    train_noise_scheduler = DDPMScheduler(**sched_kwargs)
+    train_noise_scheduler = DDPMScheduler(**sched_kwargs_train)
     vae = AutoencoderKL.from_pretrained(cfg.vae_model_path).to(
         "cuda", dtype=weight_dtype
     )
@@ -412,6 +472,8 @@ def main(cfg):
     # import pdb; pdb.set_trace()
     if cfg.train_mode.train_matching_module:
         set_up_match_attn_processor(denoising_unet, fusion_blocks="midup")
+
+    
     if cfg.solver.gradient_checkpointing:
         reference_unet.enable_gradient_checkpointing()
         denoising_unet.enable_gradient_checkpointing()
@@ -431,10 +493,13 @@ def main(cfg):
     else:
         reference_unet.requires_grad_(False)
     controlnext.requires_grad_(False)
-    # controlnext.train()
+    controlnext.train()
     reference_unet.train()
     denoising_unet.train()
     matcher.train()
+
+    if cfg.train_mode.train_semantic_lora:
+        set_up_lora_attn_processor(reference_unet, fusion_blocks="midup")
     net = Net(
         reference_unet,
         denoising_unet,
@@ -467,7 +532,16 @@ def main(cfg):
         optimizer_cls = torch.optim.AdamW
 
     _trainable = lambda m: [p for p in m.parameters() if p.requires_grad]
-    trainable_params = _trainable(net.reference_unet) +  _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(matcher)
+    
+    if cfg.train_mode.train_semantic_lora:
+ 
+        trainable_params = _trainable(net.reference_unet) \
+        +  _trainable(net.denoising_unet) \
+        + _trainable(net.controlnext)  \
+        + _trainable(matcher) 
+    else:
+        trainable_params = _trainable(net.reference_unet) +  _trainable(net.denoising_unet) + _trainable(net.controlnext) + _trainable(matcher)
+    print(len(trainable_params))
     optimizer = optimizer_cls(
         trainable_params,
         lr=learning_rate,
@@ -498,6 +572,7 @@ def main(cfg):
         train_dataset, batch_size=cfg.data.train_bs, pin_memory=False, shuffle=True, num_workers=2, persistent_workers=False
     )
 
+    
     # Prepare everything with our `accelerator`.
     (
         net,
@@ -727,12 +802,15 @@ def main(cfg):
                 # refined_seg_corr = matcher(seg_corr.unsqueeze(1).float())
                 # refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1], 32 * 32, 32 * 32)
                 seg_corr = rearrange(seg_corr, 'b hs ws ht wt -> b (hs ws) (ht wt)')
+                for n, p in matcher.named_parameters():
+                    p.requires_grad_(True)
                 for n, p in net.denoising_unet.attn_processors.items():
                     if "attn1." in n and p is not None:
                         p.matcher = matcher
                         p.seg_corr = seg_corr
                         # p.pred_residual = refined_seg_corr
                         p.is_train=True
+                
                 model_pred = net(
                     noisy_latents,
                     timesteps,
@@ -777,6 +855,7 @@ def main(cfg):
                         * mse_loss_weights
                     )
                     loss = loss.mean()
+                # print(torch.isnan(model_pred))
 
                 # Gather the losses across all processes for logging (if we use distributed training).
                 avg_loss = accelerator.gather(loss.repeat(cfg.data.train_bs)).mean()

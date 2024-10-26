@@ -63,4 +63,4 @@ validation:
   
   val_json: "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/customized_sem_seg_val.json"
 
-output_dir: "1024/inference_results_sa_aug_21000"
+output_dir: "1025/inference_results_sa_aug_21000"

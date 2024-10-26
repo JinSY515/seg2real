@@ -964,14 +964,14 @@ class StableDiffusionControlNeXtPipeline(
             do_classifier_free_guidance=self.do_classifier_free_guidance,
             mode="write",
             batch_size=batch_size,
-            fusion_blocks="midup"
+            fusion_blocks="full"
         )
         reference_control_reader = ReferenceAttentionControl(
             self.denoising_unet,
             do_classifier_free_guidance=self.do_classifier_free_guidance,
             mode="read",
             batch_size=batch_size,
-            fusion_blocks="midup"
+            fusion_blocks="full"
         )
         # prepare ref cond tenstrs
         ref_image_tensor = self.ref_image_processor.preprocess(
@@ -980,7 +980,7 @@ class StableDiffusionControlNeXtPipeline(
         ref_image_tensor = ref_image_tensor.to(
             dtype=self.vae.dtype, device=self.vae.device
         )
-        ref_image_latents = self.vae.encode(ref_image_tensor).latent_dist.mean
+        ref_image_latents = self.vae.encode(ref_image_tensor).latent_dist.sample()
         ref_image_latents = ref_image_latents * 0.18215
 
         ref_seg_image_resized =  F.interpolate(ref_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
@@ -991,6 +991,7 @@ class StableDiffusionControlNeXtPipeline(
         seg_corr = rearrange(seg_corr, 'b hs ws ht wt -> b (hs ws) (ht wt)')
         # 6.5 Optionally get Guidance Scale Embedding
         timestep_cond = None
+        init_latents = latents
         if self.denoising_unet.config.time_cond_proj_dim is not None:
             guidance_scale_tensor = torch.tensor(self.guidance_scale - 1).repeat(batch_size * num_images_per_prompt)
             timestep_cond = self.get_guidance_scale_embedding(
@@ -1020,7 +1021,13 @@ class StableDiffusionControlNeXtPipeline(
                     t
                 )
 
-                self.reference_unet(
+                # add
+                noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
+                ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else noisy_ref_latents
+                ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
+
+                
+                ref_pred = self.reference_unet(
                     ref_image_latents.repeat(
                         (2 if self.do_classifier_free_guidance else 1), 1, 1, 1
                     ),
@@ -1028,7 +1035,7 @@ class StableDiffusionControlNeXtPipeline(
                     encoder_hidden_states=ref_prompt_embeds,
                     conditional_controls=ref_controlnext_output,
                     return_dict=False
-                )
+                )[0]
                 reference_control_reader.update(reference_control_writer)
 
                 for n, p in self.denoising_unet.attn_processors.items():

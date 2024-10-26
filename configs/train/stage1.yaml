@@ -1,5 +1,5 @@
 data:
-  train_bs: 2
+  train_bs: 1
   train_width: 512
   train_height: 512
   train_seg_width: 512
@@ -16,6 +16,8 @@ train_mode:
   train_denoising : False 
   aug_mode : True
   consistent_timesteps: True 
+  train_semantic_lora : True
+
 
 solver:
   gradient_accumulation_steps: 1
@@ -60,7 +62,7 @@ weight_dtype: 'fp16'  # [fp16, fp32]
 uncond_ratio: 0.1
 noise_offset: 0.05
 snr_gamma: 5.0
-enable_zero_snr: False
+enable_zero_snr: True #False
 pose_guider_pretrain: True
 
 seed: 42
@@ -68,7 +70,7 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 200
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1016/controlnext_checkpoint21000/whole_frozen_dataaug_consistenttimesteps/midup_re_matching_module_res_lr1.0e-4_res512_bs2x1'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1026/controlnext_checkpoint21000/train_semantic_lora_whole_frozen_dataaug_consistenttimesteps/midup_matching_module_include64_lr1.0e-4_res512_bs1x1'
 
 validation:
   real_paths:

@@ -236,13 +236,13 @@ def load_models(cfg):
         reference_unet, 
         do_classifier_free_guidance=False, 
         mode="write",
-        fusion_blocks="full",
+        fusion_blocks="midup",
     )
     reference_control_reader = ReferenceAttentionControl(
         denoising_unet, 
         do_classifier_free_guidance=False, 
         mode="read",
-        fusion_blocks="full"
+        fusion_blocks="midup"
     )
     
     net = Net(
@@ -261,7 +261,7 @@ def load_models(cfg):
     #     # prediction_type="v_prediction",
     # )
     sched_kwargs.update(
-        # rescale_betas_zero_snr=True,
+        rescale_betas_zero_snr=True,
         timestep_spacing="leading",
         # set_alpha_to_one=False,         
         # prediction_type="v_prediction",
@@ -270,7 +270,7 @@ def load_models(cfg):
         "beta_schedule": "scaled_linear",
     })
     # val_noise_scheduler = DDIMScheduler(**sched_kwargs)
-    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs)
+    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs) 
     # import pdb; pdb.set_trace()
     vae = AutoencoderKL.from_pretrained(
         cfg.vae_model_path

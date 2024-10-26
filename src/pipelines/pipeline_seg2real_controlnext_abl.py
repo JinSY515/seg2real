@@ -943,12 +943,15 @@ class StableDiffusionControlNeXtPipeline(
         ref_image_tensor = self.ref_image_processor.preprocess(
             ref_image, height=height, width=width
         )
-        ref_image_tensor = ref_image_tensor.to(
-            dtype=self.vae.dtype, device=self.vae.device
-        )
-        ref_image_latents = self.vae.encode(ref_image_tensor).latent_dist.mean
-        ref_image_latents = ref_image_latents * 0.18215
 
+        with torch.no_grad():
+            ref_image_tensor = ref_image_tensor.to(
+                dtype=self.vae.dtype, device=self.vae.device
+            )
+
+            ref_image_latents = self.vae.encode(ref_image_tensor).latent_dist.sample()
+            ref_image_latents = ref_image_latents * 0.18215
+            
         # ref_seg_image_resized =  F.interpolate(ref_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
         # tgt_seg_image_resized =  F.interpolate(tgt_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
         # seg_corr = (ref_seg_image_resized[:, :, :, :, None, None] == tgt_seg_image_resized[:,:, None,None, :,:]).all(dim=1)
@@ -974,6 +977,7 @@ class StableDiffusionControlNeXtPipeline(
         is_unet_compiled = is_compiled_module(self.denoising_unet)
         is_controlnext_compiled = is_compiled_module(self.controlnext)
         is_torch_higher_equal_2_1 = is_torch_version(">=", "2.1")
+        init_latents = latents
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
                 # Relevant thread:
@@ -987,17 +991,24 @@ class StableDiffusionControlNeXtPipeline(
                         t
                     )
 
-                    self.reference_unet(
-                        ref_image_latents.repeat(
+
+                    noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
+                    ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
+                    ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
+
+
+
+                    ref_pred = self.reference_unet(
+                        ref_model_input.repeat(
                             (2 if self.do_classifier_free_guidance else 1), 1, 1, 1
                         ),
                         t,
                         encoder_hidden_states=prompt_embeds,
                         conditional_controls=ref_controlnext_output,
                         return_dict=False
-                    )
+                    )[0]
+                    
                     reference_control_reader.update(reference_control_writer)
-                 
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
@@ -1018,50 +1029,50 @@ class StableDiffusionControlNeXtPipeline(
                     added_cond_kwargs=added_cond_kwargs,
                     return_dict=False,
                 )[0]
-                attn_maps = [n for n in self.denoising_unet.attn_processors.items() if 'attn1' in n[0]]
-                for name, attn_procs in (attn_maps):
-                    attn_map = attn_procs.attn_map 
-                    save_proc_name = os.path.join(save_name, f"{name}")
-                    os.makedirs(save_proc_name, exist_ok=True)
-                    if mode == "masactrl" or mode == "controlnext": #controlnext & masasctrl 
-                        tgt_attn_map = attn_map
-                        tgt_attn_map_shape = int(math.sqrt(tgt_attn_map.shape[-1]))
+                # attn_maps = [n for n in self.denoising_unet.attn_processors.items() if 'attn1' in n[0]]
+                # for name, attn_procs in (attn_maps):
+                #     attn_map = attn_procs.attn_map 
+                #     save_proc_name = os.path.join(save_name, f"{name}")
+                #     os.makedirs(save_proc_name, exist_ok=True)
+                #     if mode == "masactrl" or mode == "controlnext": #controlnext & masasctrl 
+                #         tgt_attn_map = attn_map
+                #         tgt_attn_map_shape = int(math.sqrt(tgt_attn_map.shape[-1]))
                         
-                        visualize_hacked_attention(
-                            src_attn=None, 
-                            tgt_attn=tgt_attn_map,
-                            src_img=None,
-                            tgt_img=tgt_seg_image_pil,
-                            h_start=tgt_attn_map_shape//4,
-                            h_end=tgt_attn_map_shape//4 *3,
-                            w_start=tgt_attn_map_shape//4,
-                            w_end=tgt_attn_map_shape//4*3,
-                            img_size=256,
-                            is_train=False,
-                            save_dir=save_proc_name,
-                            timestep=t,
-                            mode=mode,
-                        )
-                    elif mode =="sa_aug":
-                        attn_size = attn_map.shape[-1] 
-                        src_attn_map = attn_map[:, :, :attn_size//2]
-                        tgt_attn_map = attn_map[:, :, attn_size//2:]
-                        tgt_attn_map_shape = int(math.sqrt(tgt_attn_map.shape[-1]))
-                        visualize_hacked_attention(
-                            src_attn=src_attn_map, 
-                            tgt_attn=tgt_attn_map,
-                            src_img=ref_image_pil,
-                            tgt_img=tgt_seg_image_pil,
-                            h_start=tgt_attn_map_shape//4,
-                            h_end=tgt_attn_map_shape//4 *3,
-                            w_start=tgt_attn_map_shape//4,
-                            w_end=tgt_attn_map_shape//4*3,
-                            img_size=256,
-                            is_train=False,
-                            save_dir=save_proc_name,
-                            timestep=t,
-                            mode=mode,
-                        )
+                #         visualize_hacked_attention(
+                #             src_attn=None, 
+                #             tgt_attn=tgt_attn_map,
+                #             src_img=None,
+                #             tgt_img=tgt_seg_image_pil,
+                #             h_start=tgt_attn_map_shape//4,
+                #             h_end=tgt_attn_map_shape//4 *3,
+                #             w_start=tgt_attn_map_shape//4,
+                #             w_end=tgt_attn_map_shape//4*3,
+                #             img_size=256,
+                #             is_train=False,
+                #             save_dir=save_proc_name,
+                #             timestep=t,
+                #             mode=mode,
+                #         )
+                #     elif mode =="sa_aug":
+                #         attn_size = attn_map.shape[-1] 
+                #         src_attn_map = attn_map[:, :, :attn_size//2]
+                #         tgt_attn_map = attn_map[:, :, attn_size//2:]
+                #         tgt_attn_map_shape = int(math.sqrt(tgt_attn_map.shape[-1]))
+                #         visualize_hacked_attention(
+                #             src_attn=src_attn_map, 
+                #             tgt_attn=tgt_attn_map,
+                #             src_img=ref_image_pil,
+                #             tgt_img=tgt_seg_image_pil,
+                #             h_start=tgt_attn_map_shape//4,
+                #             h_end=tgt_attn_map_shape//4 *3,
+                #             w_start=tgt_attn_map_shape//4,
+                #             w_end=tgt_attn_map_shape//4*3,
+                #             img_size=256,
+                #             is_train=False,
+                #             save_dir=save_proc_name,
+                #             timestep=t,
+                #             mode=mode,
+                #         )
                     
                     # import pdb; pdb.set_trace()
                     

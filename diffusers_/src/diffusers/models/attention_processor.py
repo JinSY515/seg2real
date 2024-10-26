@@ -1133,7 +1133,6 @@ class XFormersAttnProcessor:
             encoder_hidden_states = hidden_states
         elif attn.norm_cross:
             encoder_hidden_states = attn.norm_encoder_hidden_states(encoder_hidden_states)
-
         key = attn.to_k(encoder_hidden_states, *args)
         value = attn.to_v(encoder_hidden_states, *args)
 
@@ -1150,6 +1149,7 @@ class XFormersAttnProcessor:
         import math
         scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
         self.attn_map = query @ key.transpose(-2, -1) * scale_factor
+        query = query.to(key.dtype)
         hidden_states = xformers.ops.memory_efficient_attention(
             query, key, value, attn_bias=attention_mask, op=self.attention_op, scale=attn.scale
         )
