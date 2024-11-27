@@ -32,7 +32,9 @@ from src.models.mutual_self_attention import ReferenceAttentionControl
 from einops import rearrange
 from utils.visualize_hacked_attention import visualize_hacked_attention
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-
+from src.utils.util import (delete_additional_ckpt, import_filename,
+                            seed_everything)
+seed_everything(42)
 
 EXAMPLE_DOC_STRING = """
 
@@ -98,7 +100,7 @@ class StableDiffusionControlNeXtPipeline(
         denoising_unet: UNet2DConditionModel,
         controlnext: Union[ControlNeXtModel, List[ControlNeXtModel], Tuple[ControlNeXtModel]],
         scheduler: KarrasDiffusionSchedulers,
-        
+        matcher,
     ):
         super().__init__()
 
@@ -112,6 +114,7 @@ class StableDiffusionControlNeXtPipeline(
             denoising_unet=denoising_unet,
             controlnext=controlnext,
             scheduler=scheduler,
+            matcher=matcher,
         )
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
         self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor, do_convert_rgb=True)
@@ -792,6 +795,7 @@ class StableDiffusionControlNeXtPipeline(
             return latents, latents_list 
         
         return latents, start_latents
+
     @torch.no_grad()
     @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
@@ -957,7 +961,7 @@ class StableDiffusionControlNeXtPipeline(
         else:
             batch_size = prompt_embeds.shape[0]
 
-        device = self._execution_device
+        device = self.denoising_unet.device
 
         # 3. Encode input prompt
         text_encoder_lora_scale = (
@@ -974,12 +978,24 @@ class StableDiffusionControlNeXtPipeline(
             lora_scale=text_encoder_lora_scale,
             clip_skip=self.clip_skip,
         )
+
+        ref_prompt_embeds, ref_negative_prompt_embeds = self.encode_prompt(
+            "",
+            device,
+            num_images_per_prompt,
+            self.do_classifier_free_guidance,
+            negative_prompt,
+            prompt_embeds=prompt_embeds,
+            negative_prompt_embeds=negative_prompt_embeds,
+            lora_scale=text_encoder_lora_scale,
+            clip_skip=self.clip_skip,
+        )
         # For classifier free guidance, we need to do two forward passes.
         # Here we concatenate the unconditional and text embeddings into a single batch
         # to avoid doing two forward passes
         if self.do_classifier_free_guidance:
             prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds])
-
+            ref_prompt_embeds = torch.cat([ref_negative_prompt_embeds, ref_prompt_embeds])
         if ip_adapter_image is not None:
             output_hidden_state = False if isinstance(self.denoising_unet.encoder_hid_proj, ImageProjection) else True
             image_embeds, negative_image_embeds = self.encode_image(
@@ -1022,17 +1038,17 @@ class StableDiffusionControlNeXtPipeline(
 
         # 6. Prepare latent variables
         num_channels_latents = self.denoising_unet.config.in_channels
-        # latents = self.prepare_latents(
-        #     batch_size * num_images_per_prompt,
-        #     num_channels_latents,
-        #     height,
-        #     width,
-        #     prompt_embeds.dtype,
-        #     device,
-        #     generator,
-        #     latents,
-        # )
-        latents, latents_list = self.invert(ref_image, prompt , return_intermediates=True)
+        latents = self.prepare_latents(
+            batch_size * num_images_per_prompt,
+            num_channels_latents,
+            height,
+            width,
+            prompt_embeds.dtype,
+            device,
+            generator,
+            latents,
+        )
+        # latents, latents_list = self.invert(ref_image, "A photo of <sks> driving scene with all instances" , return_intermediates=True)
         batch_size=1
 
         if mode == "masactrl":
@@ -1051,7 +1067,7 @@ class StableDiffusionControlNeXtPipeline(
                 batch_size=batch_size,
                 fusion_blocks="up"
             )
-        elif mode == "sa_aug":
+        elif mode == "sa_aug" or mode == "ours":
             from src.models.mutual_self_attention_sa_aug import ReferenceAttentionControl
             reference_control_writer = ReferenceAttentionControl(
                 self.reference_unet,
@@ -1086,12 +1102,11 @@ class StableDiffusionControlNeXtPipeline(
             ref_image_latents = self.vae.encode(ref_image_tensor).latent_dist.sample()
             ref_image_latents = ref_image_latents * 0.18215
             
-        # ref_seg_image_resized =  F.interpolate(ref_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
-        # tgt_seg_image_resized =  F.interpolate(tgt_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
-        # seg_corr = (ref_seg_image_resized[:, :, :, :, None, None] == tgt_seg_image_resized[:,:, None,None, :,:]).all(dim=1)
-        # # refined_seg_corr = self.matcher(seg_corr.unsqueeze(1).float())
-        # # refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1],32*32, 32*32)
-        # seg_corr = rearrange(seg_corr, 'b hs ws ht wt -> b (hs ws) (ht wt)')
+        ref_seg_image_resized = F.interpolate(ref_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
+        tgt_seg_image_resized = F.interpolate(tgt_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
+        seg_corr = (ref_seg_image_resized[:, :, :, :, None, None] == tgt_seg_image_resized[:, :, None, None, :, :]).all(dim=1)
+        seg_corr = rearrange(seg_corr, 'b hs ws ht wt -> b (hs ws) (ht wt)')
+
         # # 6.5 Optionally get Guidance Scale Embedding
         timestep_cond = None
         if self.denoising_unet.config.time_cond_proj_dim is not None:
@@ -1112,7 +1127,10 @@ class StableDiffusionControlNeXtPipeline(
         is_controlnext_compiled = is_compiled_module(self.controlnext)
         is_torch_higher_equal_2_1 = is_torch_version(">=", "2.1")
         init_latents = latents
-        ref_invert_latents, ref_latents_list = self.invert(ref_image, prompt, return_intermediates=True, num_inference_steps=20)
+        ref_invert_latents, ref_latents_list = self.invert(ref_image, "", return_intermediates=True, num_inference_steps=20)
+        
+        reference_control_reader.clear()
+        reference_control_writer.clear()
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
                 # Relevant thread:
@@ -1120,17 +1138,17 @@ class StableDiffusionControlNeXtPipeline(
                 if (is_unet_compiled and is_controlnext_compiled) and is_torch_higher_equal_2_1:
                     torch._inductor.cudagraph_mark_step_begin()
 
-                if mode =="sa_aug" :
+                if mode =="sa_aug"  or mode == "ours":
                     ref_controlnext_output = self.controlnext(
                         ref_seg_image.float(),
                         t
                     )
-                    # ref_invert_latents = ref_latents_list[-1 -i]
-                    # ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents 
-                    # ref_model_input = self.scheduler.scale_model_input(ref_model_input,t )
-                    noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
-                    ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
+
+                    ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents
                     ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
+                    # noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
+                    # ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
+                    # ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
 
                     ref_noise_pred = self.reference_unet(
                         # ref_model_input.repeat(
@@ -1139,7 +1157,7 @@ class StableDiffusionControlNeXtPipeline(
                         # t,
                         ref_model_input,
                         t,
-                        encoder_hidden_states=prompt_embeds,
+                        encoder_hidden_states=ref_prompt_embeds,
                         conditional_controls=ref_controlnext_output,
                         return_dict=False
                     )[0]
@@ -1151,36 +1169,34 @@ class StableDiffusionControlNeXtPipeline(
                     ref_invert_latents = self.scheduler.step(ref_noise_pred, t, ref_invert_latents, **extra_step_kwargs, return_dict=False)[0]
 
                 elif mode == "masactrl" and i > 4:
+                   
                     ref_controlnext_output = self.controlnext(
                         ref_seg_image.float(),
                         t
                     )
-                    ref_invert_latents = ref_latents_list[-1 -i]
-                    # noisy_ref_latents = self.scheduler.add_noise(ref_invert_latents, init_latents, t.unsqueeze(0).long())
-                    # ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else noisy_ref_latents 
-                    # ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
+                    
                     ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents
-                    # ref_model_input = ref_invert_latents
                     ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
                     ref_noise_pred = self.reference_unet(
-                        # ref_model_input.repeat(
-                        #     (2 if self.do_classifier_free_guidance else 1), 1, 1, 1
-                        # ),
                         ref_model_input,
                         t,
                         encoder_hidden_states=prompt_embeds,
                         conditional_controls=ref_controlnext_output,
                         return_dict=False
                     )[0]
-                    # import pdb; pdb.set_trace()
-                    # if self.do_classifier_free_guidance:
-                    #     ref_noise_pred_uncond, ref_noise_pred_text = ref_noise_pred.chunk(2)
-                    #     ref_noise_pred = ref_noise_pred_uncond + self.guidance_scale * (ref_noise_pred_text - ref_noise_pred_uncond)
-
+             
                     # if i > 4:
                     reference_control_reader.update(reference_control_writer)
                     ref_invert_latents = self.scheduler.step(ref_noise_pred, t, ref_invert_latents, **extra_step_kwargs, return_dict=False)[0]
 
+                if mode == "ours":
+                    for n, p in self.denoising_unet.attn_processors.items():
+                        if "attn1." in n and p is not None:
+                            p.matcher = self.matcher 
+                            p.seg_corr = seg_corr 
+                            p.hard_corr = True
+                            # p.timestep = t
+                            p.blocks = n.split(".")[0]
                 # latents = latents_list[-1-i]
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
@@ -1204,6 +1220,57 @@ class StableDiffusionControlNeXtPipeline(
                 )[0]
                 # print("attention visualization")
                 # attn_maps = [n for n in self.denoising_unet.attn_processors.items() if 'attn1' in n[0]]
+                # for name, attn_procs in attn_maps:
+                #     attn_map = attn_procs.attn_map # 
+                #     attn_size = attn_map.shape[-1]
+                #     save_proc_name = os.path.join(f"{save_name}/after", f"{name}")
+                #     print(attn_map.shape)
+                #     if attn_map.shape[-2] * 2 ==attn_map.shape[-1]:
+                #         src_attn_map = attn_map[1, :, :, :attn_size//2]
+                #         tgt_attn_map = attn_map[1, :, :, attn_size//2:]
+                #         tgt_attn_map_shape = int(math.sqrt(tgt_attn_map.shape[-1]))
+                    
+                #         visualize_hacked_attention(
+                #                 src_attn=src_attn_map, 
+                #                 tgt_attn=tgt_attn_map,
+                #                 src_img=ref_image_pil,
+                #                 tgt_img=tgt_seg_image_pil,
+                #                 h_start=tgt_attn_map_shape//4,
+                #                 h_end=tgt_attn_map_shape//4 *3,
+                #                 w_start=tgt_attn_map_shape//4,
+                #                 w_end=tgt_attn_map_shape//4*3,
+                #                 img_size=32,
+                #                 is_train=False,
+                #                 save_dir=save_proc_name,
+                #                 timestep=t,
+                #                 mode=mode,
+                #         )
+                # bef_attn_maps = [n for n in self.denoising_unet.attn_processors.items() if 'attn1' in n[0]]
+                # for name, attn_procs in bef_attn_maps:
+                #     attn_map = attn_procs.before_attn_map # 
+                #     attn_size = attn_map.shape[-1]
+                #     save_proc_name = os.path.join(f"{save_name}/before", f"{name}")
+                #     if attn_map.shape[-2] * 2 ==attn_map.shape[-1]:
+                #         src_attn_map = attn_map[1, :, :, :attn_size//2]
+                #         tgt_attn_map = attn_map[1, :, :, attn_size//2:]
+                #         tgt_attn_map_shape = int(math.sqrt(tgt_attn_map.shape[-1]))
+                    
+                #         visualize_hacked_attention(
+                #                 src_attn=src_attn_map, 
+                #                 tgt_attn=tgt_attn_map,
+                #                 src_img=ref_image_pil,
+                #                 tgt_img=tgt_seg_image_pil,
+                #                 h_start=tgt_attn_map_shape//4,
+                #                 h_end=tgt_attn_map_shape//4 *3,
+                #                 w_start=tgt_attn_map_shape//4,
+                #                 w_end=tgt_attn_map_shape//4*3,
+                #                 img_size=32,
+                #                 is_train=False,
+                #                 save_dir=save_proc_name,
+                #                 timestep=t,
+                #                 mode=mode,
+                #             )      
+
                 # for name, attn_procs in (attn_maps):
                 #     attn_map = attn_procs.attn_map 
                 #     save_proc_name = os.path.join(save_name, f"{name}")

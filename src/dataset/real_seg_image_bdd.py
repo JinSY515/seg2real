@@ -41,8 +41,8 @@ class RealSegDataset(Dataset):
         self.num_seg_images = len(self.seg_images_path)
         self._length = self.num_real_images
 
-        self.tokenizer = CLIPTokenizer.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="tokenizer")
-        self.text_encoder = CLIPTextModel.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="text_encoder").to(device="cuda")
+        self.tokenizer = CLIPTokenizer.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5", subfolder="tokenizer")
+        self.text_encoder = CLIPTextModel.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5", subfolder="text_encoder").to(device="cuda")
 
         self.mode = mode
         assert self.mode in ["default", "panoptic",  "retrieve_adj", "retrieve_dino"]
@@ -147,26 +147,26 @@ class RealSegDataset(Dataset):
 
         # torch.manual_seed(42)
         rng_state = torch.get_rng_state()
-        self.random_resized_crop = transforms.RandomResizedCrop(
-            self.img_size, 
-            scale=self.img_scale, 
-            ratio=self.img_ratio,
-            interpolation=transforms.InterpolationMode.BILINEAR,
-        )
+        # self.random_resized_crop = transforms.RandomResizedCrop(
+        #     self.img_size, 
+        #     scale=self.img_scale, 
+        #     ratio=self.img_ratio,
+        #     interpolation=transforms.InterpolationMode.BILINEAR,
+        # )
         
-        self.transform = transforms.Compose(
-            [
-                self.random_resized_crop,
-                transforms.ToTensor(),
-                transforms.Normalize([0.5], [0.5]),
-            ]
-        )
-        self.cond_transform = transforms.Compose(
-            [
-                self.random_resized_crop,
-                transforms.ToTensor()
-            ]
-        )
+        # self.transform = transforms.Compose(
+        #     [
+        #         self.random_resized_crop,
+        #         transforms.ToTensor(),
+        #         transforms.Normalize([0.5], [0.5]),
+        #     ]
+        # )
+        # self.cond_transform = transforms.Compose(
+        #     [
+        #         self.random_resized_crop,
+        #         transforms.ToTensor()
+        #     ]
+        # )
         ref_image = self.augmentation(ref_image, self.transform)
         ref_seg_image = self.augmentation(ref_seg_image, self.cond_transform)
         
@@ -181,12 +181,12 @@ class RealSegDataset(Dataset):
     
         if True :
             os.makedirs("dataset_vis", exist_ok=True)
-            cv2.imwrite("dataset_vis/seg_image.png", seg_image.permute(1,2,0).detach().cpu().numpy() * 255.0)
-            cv2.imwrite("dataset_vis/tgt_image.png", tgt_image.permute(1,2,0).detach().cpu().numpy() * 255.0)
-            cv2.imwrite("dataset_vis/ref_image.png", ref_image.permute(1,2,0).detach().cpu().numpy() * 255.0)
-            cv2.imwrite("dataset_vis/ref_seg_image.png", ref_seg_image.permute(1,2,0).detach().cpu().numpy() * 255.0)
-            cv2.imwrite("dataset_vis/ref_aug_image.png", ref_aug_image.permute(1,2,0).detach().cpu().numpy() * 255.0)
-            cv2.imwrite("dataset_vis/ref_aug_seg_image.png", ref_aug_seg_image.permute(1,2,0).detach().cpu().numpy() * 255.0)
+            cv2.imwrite("dataset_vis/seg_image.png", seg_image.permute(1,2,0).detach().cpu().numpy()[..., ::-1] * 255.0)
+            cv2.imwrite("dataset_vis/tgt_image.png", tgt_image.permute(1,2,0).detach().cpu().numpy()[..., ::-1] * 255.0)
+            cv2.imwrite("dataset_vis/ref_image.png", ref_image.permute(1,2,0).detach().cpu().numpy()[..., ::-1] * 255.0)
+            cv2.imwrite("dataset_vis/ref_seg_image.png", ref_seg_image.permute(1,2,0).detach().cpu().numpy()[..., ::-1] * 255.0)
+            cv2.imwrite("dataset_vis/ref_aug_image.png", ref_aug_image.permute(1,2,0).detach().cpu().numpy()[..., ::-1] * 255.0)
+            cv2.imwrite("dataset_vis/ref_aug_seg_image.png", ref_aug_seg_image.permute(1,2,0).detach().cpu().numpy()[..., ::-1] * 255.0)
             # tgt_image.save("dataset_vis/tgt_image.png")
             # ref_image.save("dataset_vis/ref_image.png")
             # ref_seg_image.save("dataset_vis/ref_seg_image.png")

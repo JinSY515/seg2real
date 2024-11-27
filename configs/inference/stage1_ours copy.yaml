@@ -1,0 +1,84 @@
+base_model_path: "stable-diffusion-v1-5/stable-diffusion-v1-5" #"/mnt/data4/siyoon/stable-diffusion-v1-5" #"/home/cvlab15/project/siyoon/i2i_control/checkpoints/sd-image-variations-diffusers" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-image-variations-diffusers'
+vae_model_path: "stable-diffusion-v1-5/stable-diffusion-v1-5" #"/mnt/data4/siyoon/stable-diffusion-v1-5/vae"  #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-vae-ft-mse'
+# vae_model_path: "stabilityai/sd-vae-ft-mse"
+pretrained_unet_path : "/mnt/data4/siyoon/reversed_checkpoits/model_1.safetensors" #"/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model_1.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+
+net:
+  reference_unet_path : "/mnt/data4/siyoon/reversed_checkpoits/model_1.safetensors" # "/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model_1.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+  denoising_unet_path : "/mnt/data4/siyoon/reversed_checkpoits/model_1.safetensors" #"/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model_1.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+  controlnext_path: "/mnt/data4/siyoon/reversed_checkpoits/model.safetensors" # "/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/controlnext.bin" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+# pretrained_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model_1.safetensors" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+  load_lora : False
+  # reference_unet_lora_path : "/mnt/data4/siyoon/i2i_control/bdd_1101/controlnext_final_checkpoint52400/train_semantic_lora_whole_frozen_dataaug_consistenttimesteps/no_norm_matching_module_include64_lr1.0e-5_res512_bs1x1/stage1/reference_unet-22000.pth"
+  
+  load_trained_reference : False 
+  # reference_unet_full_path : "/mnt/data4/siyoon/i2i_control/bdd_1105/controlnext_final_checkpoint52400/train_ref_mat/_dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head/stage1/reference_unet-38000.pth"
+  trained_den : False
+  # denoising_unet_full_path : "/mnt/data4/siyoon/i2i_control/bdd_1108/controlnext_final_checkpoint52400/train_densa_mat_deepmatch/dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head_timestep-aware/stage1/denoising_unet-4000.pth"
+  # matcher_path: "/mnt/data4/siyoon/i2i_control/bdd_1105/controlnext_final_checkpoint52400/whole_frozen_dataaug_consistenttimesteps/lr5.0e-6_res512_bs1x1/multi_head/stage1/matcher-5000.pth" #"/mnt/data4/siyoon/i2i_control/bdd_1103/controlnext_final_checkpoint52400/whole_frozen_dataaug_consistenttimesteps/no_norm_matching_module_include64_lr1.0e-5_res512_bs1x1/stage1/matcher-20000.pth" 
+  matcher_path : "/mnt/data4/siyoon/i2i_control/bdd_1108/controlnext_reversed/train_densa_mat_deepmatch/dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head_split_adapter_after_down0_cost_plusminus/stage1/matcher-25000.pth"
+  #  "/mnt/data4/siyoon/i2i_control/bdd_1108/controlnext_final_checkpoint52400/train_densa_mat_deepmatch/dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head_split_adapter/stage1/matcher-28000.pth"
+  #"/mnt/data4/siyoon/i2i_control/bdd_1105/controlnext_final_checkpoint52400/whole_frozen_dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head_timestep-aware/checkpoints/matcher-22000.pth" #"/mnt/data4/siyoon/i2i_control/bdd_1105/controlnext_final_checkpoint52400/train_ref_mat/_dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head/stage1/matcher-38000.pth"
+# net:
+#   reference_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model_1.safetensors" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+#   denoising_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model_1.safetensors" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+#   controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model.safetensors" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+
+noise_scheduler_kwargs:
+  num_train_timesteps: 1000
+  beta_start:          0.00085
+  beta_end:            0.012
+  beta_schedule:       "scaled_linear"
+  steps_offset:        1
+  clip_sample:         false
+
+data:
+  val_width: 512 #512 
+  val_height: 512 #512
+
+validation:
+  real_paths:
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/a70faa46-6630da64.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/9a9da7d3-00000000.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/80985724-bc3fece0.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/9eb69cb0-42faf92d.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/8a66084a-5158b84e.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/91faccca-00000000.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/8ab12dec-59848511.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/a9ad892b-00000000.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/971cbf48-00000000.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/8f737bfa-756ddb33.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/808ff399-79b2c310.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/a02501c6-e1ed5f44.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/7d209219-ccdc1a09.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/7dc08598-f42e2015.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/7f3656b9-ef39e56d.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/9c94f476-8107ee6b.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/7e5ef657-a9ad0001.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/8dd5f9b7-00000000.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/9a60b3e7-789f9b00.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/ff55861e-a06b953c.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/a8923b1f-00000000.jpg
+    # - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/a91b7555-00000835.jpg
+
+  seg_paths:
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7dc08598-f42e2015.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7d209219-ccdc1a09.png
+
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7f3656b9-ef39e56d.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/9c94f476-8107ee6b.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7e5ef657-a9ad0001.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/8dd5f9b7-00000000.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/a760566c-e45f7339.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/8a286021-385f1357.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/8c976e04-a838f2a6.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/a91b7555-00001230.png
+    # - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/a91b7555-00000895.png
+    
+    
+  val_json: "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/customized_sem_seg_val.json"
+
+
+# output_dir: "1108/multi-head_split_matcher_deepmatch_midup/ctrlx_like_step20_7.5_checkpoint8000/midup"
+# output_dir : "tmp"
+output_dir : "1112/final"

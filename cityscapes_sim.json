@@ -1,0 +1,2002 @@
+{
+    "frankfurt_000001_009058_gtFine_color": [
+        "frankfurt_000001_009504_gtFine_color",
+        0.03600085899233818
+    ],
+    "frankfurt_000001_009504_gtFine_color": [
+        "frankfurt_000001_009058_gtFine_color",
+        0.03600085899233818
+    ],
+    "frankfurt_000001_005184_gtFine_color": [
+        "frankfurt_000001_017101_gtFine_color",
+        0.07703011482954025
+    ],
+    "frankfurt_000001_017101_gtFine_color": [
+        "frankfurt_000001_005184_gtFine_color",
+        0.07703011482954025
+    ],
+    "munster_000075_000019_gtFine_color": [
+        "munster_000074_000019_gtFine_color",
+        0.07834233343601227
+    ],
+    "munster_000074_000019_gtFine_color": [
+        "munster_000075_000019_gtFine_color",
+        0.07834233343601227
+    ],
+    "frankfurt_000001_067178_gtFine_color": [
+        "frankfurt_000001_067092_gtFine_color",
+        0.0789731964468956
+    ],
+    "frankfurt_000001_067092_gtFine_color": [
+        "frankfurt_000001_067178_gtFine_color",
+        0.0789731964468956
+    ],
+    "frankfurt_000001_059119_gtFine_color": [
+        "frankfurt_000001_058914_gtFine_color",
+        0.08219455182552338
+    ],
+    "frankfurt_000001_058914_gtFine_color": [
+        "frankfurt_000001_059119_gtFine_color",
+        0.08219455182552338
+    ],
+    "munster_000150_000019_gtFine_color": [
+        "munster_000151_000019_gtFine_color",
+        0.08224726468324661
+    ],
+    "munster_000151_000019_gtFine_color": [
+        "munster_000150_000019_gtFine_color",
+        0.08224726468324661
+    ],
+    "frankfurt_000000_003357_gtFine_color": [
+        "frankfurt_000000_003025_gtFine_color",
+        0.08301489800214767
+    ],
+    "frankfurt_000000_003025_gtFine_color": [
+        "frankfurt_000000_003357_gtFine_color",
+        0.08301489800214767
+    ],
+    "munster_000092_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.08390563726425171
+    ],
+    "munster_000027_000019_gtFine_color": [
+        "munster_000092_000019_gtFine_color",
+        0.08390563726425171
+    ],
+    "frankfurt_000001_030067_gtFine_color": [
+        "frankfurt_000001_035144_gtFine_color",
+        0.08410169184207916
+    ],
+    "frankfurt_000001_035144_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.08410169184207916
+    ],
+    "frankfurt_000001_052120_gtFine_color": [
+        "frankfurt_000000_015676_gtFine_color",
+        0.08494165539741516
+    ],
+    "frankfurt_000000_015676_gtFine_color": [
+        "frankfurt_000001_052120_gtFine_color",
+        0.08494165539741516
+    ],
+    "frankfurt_000001_073464_gtFine_color": [
+        "frankfurt_000001_052120_gtFine_color",
+        0.08513130992650986
+    ],
+    "frankfurt_000000_020321_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.08518694341182709
+    ],
+    "frankfurt_000001_012038_gtFine_color": [
+        "frankfurt_000000_020321_gtFine_color",
+        0.08518694341182709
+    ],
+    "frankfurt_000001_029600_gtFine_color": [
+        "frankfurt_000001_035144_gtFine_color",
+        0.08559735119342804
+    ],
+    "frankfurt_000001_077233_gtFine_color": [
+        "frankfurt_000001_067178_gtFine_color",
+        0.08627606183290482
+    ],
+    "frankfurt_000001_032711_gtFine_color": [
+        "frankfurt_000001_077233_gtFine_color",
+        0.0862790197134018
+    ],
+    "frankfurt_000001_010600_gtFine_color": [
+        "frankfurt_000001_048355_gtFine_color",
+        0.08641040325164795
+    ],
+    "frankfurt_000001_048355_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.08641040325164795
+    ],
+    "frankfurt_000001_077092_gtFine_color": [
+        "frankfurt_000001_052120_gtFine_color",
+        0.0867713987827301
+    ],
+    "frankfurt_000001_031266_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.0867871567606926
+    ],
+    "frankfurt_000001_051737_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.08704394102096558
+    ],
+    "frankfurt_000000_015389_gtFine_color": [
+        "frankfurt_000001_051737_gtFine_color",
+        0.08704394102096558
+    ],
+    "munster_000096_000019_gtFine_color": [
+        "munster_000075_000019_gtFine_color",
+        0.08718074858188629
+    ],
+    "frankfurt_000001_080830_gtFine_color": [
+        "frankfurt_000001_024927_gtFine_color",
+        0.08745580911636353
+    ],
+    "frankfurt_000001_024927_gtFine_color": [
+        "frankfurt_000001_080830_gtFine_color",
+        0.08745580911636353
+    ],
+    "munster_000073_000019_gtFine_color": [
+        "munster_000075_000019_gtFine_color",
+        0.08756943047046661
+    ],
+    "frankfurt_000000_021667_gtFine_color": [
+        "frankfurt_000001_030067",
+        0.08775720000267029
+    ],
+    "munster_000028_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.08817479759454727
+    ],
+    "munster_000018_000019_gtFine_color": [
+        "munster_000028_000019_gtFine_color",
+        0.08817479759454727
+    ],
+    "frankfurt_000001_028335_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.08831009268760681
+    ],
+    "munster_000140_000019_gtFine_color": [
+        "munster_000139_000019_gtFine_color",
+        0.08834588527679443
+    ],
+    "munster_000139_000019_gtFine_color": [
+        "munster_000140_000019_gtFine_color",
+        0.08834588527679443
+    ],
+    "munster_000081_000019_gtFine_color": [
+        "munster_000017_000019_gtFine_color",
+        0.08838304877281189
+    ],
+    "munster_000017_000019_gtFine_color": [
+        "munster_000081_000019_gtFine_color",
+        0.08838304877281189
+    ],
+    "munster_000016_000019_gtFine_color": [
+        "munster_000081_000019_gtFine_color",
+        0.08841148018836975
+    ],
+    "frankfurt_000001_019969_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.08857472985982895
+    ],
+    "frankfurt_000001_010830_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.08869533240795135
+    ],
+    "frankfurt_000001_019698_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.08875074982643127
+    ],
+    "frankfurt_000001_047178_gtFine_color": [
+        "frankfurt_000001_047552_gtFine_color",
+        0.08884821832180023
+    ],
+    "frankfurt_000001_047552_gtFine_color": [
+        "frankfurt_000001_047178_gtFine_color",
+        0.08884821832180023
+    ],
+    "frankfurt_000001_072155_gtFine_color": [
+        "frankfurt_000001_072295",
+        0.0890081524848938
+    ],
+    "frankfurt_000001_072295_gtFine_color": [
+        "frankfurt_000001_072155_gtFine_color",
+        0.0890081524848938
+    ],
+    "munster_000021_000019_gtFine_color": [
+        "lindau_000041_000019_gtFine_color",
+        0.08921652287244797
+    ],
+    "lindau_000041_000019_gtFine_color": [
+        "munster_000021_000019_gtFine_color",
+        0.08921652287244797
+    ],
+    "frankfurt_000001_064925_gtFine_color": [
+        "frankfurt_000001_064798_gtFine_color",
+        0.0893372893333435
+    ],
+    "frankfurt_000001_064798_gtFine_color": [
+        "frankfurt_000001_064925_gtFine_color",
+        0.0893372893333435
+    ],
+    "frankfurt_000001_033655_gtFine_color": [
+        "frankfurt_000001_032711_gtFine_color",
+        0.08939553052186966
+    ],
+    "frankfurt_000001_016029_gtFine_color": [
+        "frankfurt_000001_052120_gtFine_color",
+        0.08945882320404053
+    ],
+    "frankfurt_000001_014221_gtFine_color": [
+        "frankfurt_000001_023769_gtFine_color",
+        0.08961617946624756
+    ],
+    "frankfurt_000001_023769_gtFine_color": [
+        "frankfurt_000001_014221_gtFine_color",
+        0.08961617946624756
+    ],
+    "frankfurt_000000_000576_gtFine_color": [
+        "frankfurt_000001_064798_gtFine_color",
+        0.08975434303283691
+    ],
+    "frankfurt_000001_007973_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.08977294713258743
+    ],
+    "lindau_000047_000019_gtFine_color": [
+        "lindau_000050_000019_gtFine_color",
+        0.08989742398262024
+    ],
+    "lindau_000050_000019_gtFine_color": [
+        "lindau_000047_000019_gtFine_color",
+        0.08989742398262024
+    ],
+    "frankfurt_000000_005543_gtFine_color": [
+        "frankfurt_000001_005184_gtFine_color",
+        0.0899323970079422
+    ],
+    "lindau_000021_000019_gtFine_color": [
+        "lindau_000047_000019_gtFine_color",
+        0.08998094499111176
+    ],
+    "munster_000098_000019_gtFine_color": [
+        "munster_000081_000019_gtFine_color",
+        0.09051269292831421
+    ],
+    "frankfurt_000001_067735_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.09059536457061768
+    ],
+    "frankfurt_000001_012519_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.09068341553211212
+    ],
+    "frankfurt_000001_008688_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09080658107995987
+    ],
+    "frankfurt_000001_007857_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.0909527987241745
+    ],
+    "frankfurt_000000_022797_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.09105423092842102
+    ],
+    "frankfurt_000001_080091_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.09108078479766846
+    ],
+    "munster_000086_000019_gtFine_color": [
+        "munster_000096_000019_gtFine_color",
+        0.09158308804035187
+    ],
+    "munster_000072_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.09165133535861969
+    ],
+    "frankfurt_000001_005703_gtFine_color": [
+        "frankfurt_000001_005184_gtFine_color",
+        0.09174017608165741
+    ],
+    "frankfurt_000001_013496_gtFine_color": [
+        "frankfurt_000001_077233_gtFine_color",
+        0.09209893643856049
+    ],
+    "munster_000152_000019_gtFine_color": [
+        "munster_000096_000019_gtFine_color",
+        0.09229440987110138
+    ],
+    "frankfurt_000000_020215_gtFine_color": [
+        "frankfurt_000001_031416_gtFine_color",
+        0.09235230088233948
+    ],
+    "frankfurt_000001_031416_gtFine_color": [
+        "frankfurt_000000_020215_gtFine_color",
+        0.09235230088233948
+    ],
+    "frankfurt_000001_015768_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.09243816882371902
+    ],
+    "frankfurt_000000_013382_gtFine_color": [
+        "frankfurt_000001_077233_gtFine_color",
+        0.09244253486394882
+    ],
+    "frankfurt_000001_049298_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.09246740490198135
+    ],
+    "frankfurt_000001_067295_gtFine_color": [
+        "frankfurt_000001_010830_gtFine_color",
+        0.09247943758964539
+    ],
+    "frankfurt_000001_082466_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.09257667511701584
+    ],
+    "munster_000011_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.09281201660633087
+    ],
+    "frankfurt_000001_082087_gtFine_color": [
+        "frankfurt_000001_028335_gtFine_color",
+        0.09309732913970947
+    ],
+    "frankfurt_000001_020046_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.09310020506381989
+    ],
+    "frankfurt_000001_048196_gtFine_color": [
+        "frankfurt_000000_015676_gtFine_color",
+        0.09318781644105911
+    ],
+    "frankfurt_000001_063045_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.0932471752166748
+    ],
+    "frankfurt_000000_006589_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09343232214450836
+    ],
+    "munster_000149_000019_gtFine_color": [
+        "munster_000151_000019_gtFine_color",
+        0.09359294176101685
+    ],
+    "munster_000053_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.09368053078651428
+    ],
+    "frankfurt_000001_056580_gtFine_color": [
+        "frankfurt_000001_013496_gtFine_color",
+        0.09368404746055603
+    ],
+    "frankfurt_000001_028232_gtFine_color": [
+        "frankfurt_000001_014221_gtFine_color",
+        0.09378781914710999
+    ],
+    "frankfurt_000001_060422_gtFine_color": [
+        "frankfurt_000001_052120_gtFine_color",
+        0.09385430812835693
+    ],
+    "frankfurt_000001_010156_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.094002865254879
+    ],
+    "frankfurt_000001_011162_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.09416218101978302
+    ],
+    "munster_000060_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.0942256972193718
+    ],
+    "munster_000067_000019_gtFine_color": [
+        "lindau_000028_000019_gtFine_color",
+        0.09427188336849213
+    ],
+    "lindau_000028_000019_gtFine_color": [
+        "munster_000067_000019_gtFine_color",
+        0.09427188336849213
+    ],
+    "frankfurt_000001_003056_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.0942850112915039
+    ],
+    "frankfurt_000001_014741_gtFine_color": [
+        "frankfurt_000001_008200_gtFine_color",
+        0.09430184215307236
+    ],
+    "frankfurt_000001_008200_gtFine_color": [
+        "frankfurt_000001_014741_gtFine_color",
+        0.09430184215307236
+    ],
+    "lindau_000044_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.09439939260482788
+    ],
+    "munster_000042_000019_gtFine_color": [
+        "munster_000107_000019",
+        0.09463660418987274
+    ],
+    "munster_000107_000019_gtFine_color": [
+        "munster_000042_000019_gtFine_color",
+        0.09463660418987274
+    ],
+    "frankfurt_000001_065160_gtFine_color": [
+        "frankfurt_000001_067735_gtFine_color",
+        0.09467143565416336
+    ],
+    "lindau_000020_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.09467393159866333
+    ],
+    "frankfurt_000001_032556_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.09467528015375137
+    ],
+    "frankfurt_000000_012009_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.09475260972976685
+    ],
+    "frankfurt_000001_004736_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.094805046916008
+    ],
+    "munster_000154_000019_gtFine_color": [
+        "munster_000065_000019_gtFine_color",
+        0.09497237205505371
+    ],
+    "munster_000065_000019_gtFine_color": [
+        "munster_000154_000019_gtFine_color",
+        0.09497237205505371
+    ],
+    "frankfurt_000000_009291_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.0950717180967331
+    ],
+    "frankfurt_000000_011810_gtFine_color": [
+        "frankfurt_000001_024927_gtFine_color",
+        0.09510791301727295
+    ],
+    "frankfurt_000001_028590_gtFine_color": [
+        "frankfurt_000001_080830_gtFine_color",
+        0.09526194632053375
+    ],
+    "frankfurt_000001_002512_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.09529751539230347
+    ],
+    "frankfurt_000001_034047_gtFine_color": [
+        "frankfurt_000000_020321_gtFine_color",
+        0.09530492126941681
+    ],
+    "lindau_000030_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.09533297270536423
+    ],
+    "frankfurt_000001_009854_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.0953834131360054
+    ],
+    "frankfurt_000001_079206_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.09539952874183655
+    ],
+    "frankfurt_000001_002646_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.09545165300369263
+    ],
+    "frankfurt_000001_015328_gtFine_color": [
+        "frankfurt_000001_073464_gtFine_color",
+        0.09557917714118958
+    ],
+    "frankfurt_000001_023369_gtFine_color": [
+        "frankfurt_000001_004736_gtFine_color",
+        0.09559143334627151
+    ],
+    "lindau_000018_000019_gtFine_color": [
+        "lindau_000044_000019_gtFine_color",
+        0.09560708701610565
+    ],
+    "frankfurt_000001_038418_gtFine_color": [
+        "frankfurt_000001_024927",
+        0.09564073383808136
+    ],
+    "munster_000082_000019_gtFine_color": [
+        "munster_000081_000019_gtFine_color",
+        0.0956413745880127
+    ],
+    "frankfurt_000000_013240_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.09574013948440552
+    ],
+    "munster_000066_000019_gtFine_color": [
+        "munster_000092_000019_gtFine_color",
+        0.09576940536499023
+    ],
+    "frankfurt_000000_010763_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09583714604377747
+    ],
+    "munster_000008_000019_gtFine_color": [
+        "munster_000012_000019_gtFine_color",
+        0.09591525793075562
+    ],
+    "munster_000012_000019_gtFine_color": [
+        "munster_000008_000019_gtFine_color",
+        0.09591525793075562
+    ],
+    "frankfurt_000001_032942_gtFine_color": [
+        "frankfurt_000001_032711_gtFine_color",
+        0.09597543627023697
+    ],
+    "munster_000099_000019_gtFine_color": [
+        "munster_000081_000019_gtFine_color",
+        0.09600095450878143
+    ],
+    "frankfurt_000001_068772_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.09602099657058716
+    ],
+    "frankfurt_000001_058504_gtFine_color": [
+        "frankfurt_000001_002646_gtFine_color",
+        0.09604261815547943
+    ],
+    "frankfurt_000001_011715_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.09607556462287903
+    ],
+    "frankfurt_000001_059642_gtFine_color": [
+        "frankfurt_000000_000576",
+        0.09608535468578339
+    ],
+    "frankfurt_000001_080391_gtFine_color": [
+        "frankfurt_000001_080830_gtFine_color",
+        0.09616728127002716
+    ],
+    "frankfurt_000001_029236_gtFine_color": [
+        "frankfurt_000001_028335_gtFine_color",
+        0.09625934064388275
+    ],
+    "frankfurt_000000_008206_gtFine_color": [
+        "frankfurt_000000_020321_gtFine_color",
+        0.09631697088479996
+    ],
+    "frankfurt_000001_073243_gtFine_color": [
+        "frankfurt_000001_031266_gtFine_color",
+        0.09660536050796509
+    ],
+    "frankfurt_000000_012121_gtFine_color": [
+        "frankfurt_000001_023369_gtFine_color",
+        0.09664954245090485
+    ],
+    "frankfurt_000001_051807_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.09680220484733582
+    ],
+    "frankfurt_000000_009969_gtFine_color": [
+        "frankfurt_000001_068772_gtFine_color",
+        0.09680768847465515
+    ],
+    "frankfurt_000001_054415_gtFine_color": [
+        "frankfurt_000000_015676_gtFine_color",
+        0.0968235582113266
+    ],
+    "frankfurt_000001_044658_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09686484932899475
+    ],
+    "frankfurt_000001_068682_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09689503908157349
+    ],
+    "frankfurt_000001_038844_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.09694188833236694
+    ],
+    "munster_000144_000019_gtFine_color": [
+        "munster_000145_000019_gtFine_color",
+        0.0972653478384018
+    ],
+    "munster_000145_000019_gtFine_color": [
+        "munster_000144_000019_gtFine_color",
+        0.0972653478384018
+    ],
+    "frankfurt_000001_054884_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.09734487533569336
+    ],
+    "frankfurt_000001_069633_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.09739705175161362
+    ],
+    "frankfurt_000000_001016_gtFine_color": [
+        "frankfurt_000001_029600_gtFine_color",
+        0.09740272164344788
+    ],
+    "frankfurt_000001_028854_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.09755179286003113
+    ],
+    "munster_000163_000019_gtFine_color": [
+        "munster_000008_000019_gtFine_color",
+        0.09791523218154907
+    ],
+    "frankfurt_000000_000294_gtFine_color": [
+        "frankfurt_000001_029600_gtFine_color",
+        0.09792641550302505
+    ],
+    "frankfurt_000001_046504_gtFine_color": [
+        "frankfurt_000001_052120_gtFine_color",
+        0.09794030338525772
+    ],
+    "frankfurt_000000_012868_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.09796231985092163
+    ],
+    "frankfurt_000001_049698_gtFine_color": [
+        "frankfurt_000001_049770_gtFine_color",
+        0.09801473468542099
+    ],
+    "frankfurt_000001_049770_gtFine_color": [
+        "frankfurt_000001_049698_gtFine_color",
+        0.09801473468542099
+    ],
+    "munster_000089_000019_gtFine_color": [
+        "munster_000021_000019_gtFine_color",
+        0.09813894331455231
+    ],
+    "munster_000004_000019_gtFine_color": [
+        "lindau_000006_000019_gtFine_color",
+        0.09814295172691345
+    ],
+    "lindau_000006_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.09814295172691345
+    ],
+    "frankfurt_000000_013942_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09816224128007889
+    ],
+    "frankfurt_000000_013067_gtFine_color": [
+        "frankfurt_000001_010830_gtFine_color",
+        0.09821802377700806
+    ],
+    "frankfurt_000001_054219_gtFine_color": [
+        "frankfurt_000001_023769_gtFine_color",
+        0.09823489189147949
+    ],
+    "frankfurt_000001_042098_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09833088517189026
+    ],
+    "frankfurt_000001_046779_gtFine_color": [
+        "frankfurt_000001_077233_gtFine_color",
+        0.09845368564128876
+    ],
+    "munster_000029_000019_gtFine_color": [
+        "munster_000076_000019_gtFine_color",
+        0.0985112339258194
+    ],
+    "munster_000076_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.0985112339258194
+    ],
+    "frankfurt_000001_062509_gtFine_color": [
+        "frankfurt_000001_008200_gtFine_color",
+        0.09859919548034668
+    ],
+    "munster_000095_000019_gtFine_color": [
+        "munster_000009_000019_gtFine_color",
+        0.09870830923318863
+    ],
+    "munster_000009_000019_gtFine_color": [
+        "munster_000095_000019_gtFine_color",
+        0.09870830923318863
+    ],
+    "frankfurt_000001_038645_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.09873585402965546
+    ],
+    "frankfurt_000001_068063_gtFine_color": [
+        "frankfurt_000001_080830_gtFine_color",
+        0.09887390583753586
+    ],
+    "frankfurt_000001_075296_gtFine_color": [
+        "frankfurt_000001_031266_gtFine_color",
+        0.09899239242076874
+    ],
+    "frankfurt_000001_012870_gtFine_color": [
+        "frankfurt_000001_010830_gtFine_color",
+        0.09903950989246368
+    ],
+    "frankfurt_000001_054640_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.09907835721969604
+    ],
+    "munster_000104_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.09909258782863617
+    ],
+    "frankfurt_000001_002759_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.09914220124483109
+    ],
+    "frankfurt_000000_002963_gtFine_color": [
+        "frankfurt_000001_052120_gtFine_color",
+        0.09925184398889542
+    ],
+    "munster_000146_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.09936204552650452
+    ],
+    "lindau_000051_000019_gtFine_color": [
+        "munster_000146_000019_gtFine_color",
+        0.09936204552650452
+    ],
+    "frankfurt_000001_078803_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.09947264194488525
+    ],
+    "frankfurt_000001_021825_gtFine_color": [
+        "frankfurt_000001_007622_gtFine_color",
+        0.09948588907718658
+    ],
+    "frankfurt_000001_007622_gtFine_color": [
+        "frankfurt_000001_021825_gtFine_color",
+        0.09948588907718658
+    ],
+    "frankfurt_000001_067474_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.09949886053800583
+    ],
+    "frankfurt_000001_083852_gtFine_color": [
+        "frankfurt_000001_029600_gtFine_color",
+        0.09955375641584396
+    ],
+    "munster_000043_000019_gtFine_color": [
+        "munster_000075_000019_gtFine_color",
+        0.09958076477050781
+    ],
+    "munster_000035_000019_gtFine_color": [
+        "munster_000096_000019_gtFine_color",
+        0.10003450512886047
+    ],
+    "frankfurt_000000_019607_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.1000371128320694
+    ],
+    "frankfurt_000000_020880_gtFine_color": [
+        "frankfurt_000001_048196_gtFine_color",
+        0.10015014559030533
+    ],
+    "frankfurt_000001_019854_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10018759965896606
+    ],
+    "frankfurt_000001_049078_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.10020862519741058
+    ],
+    "frankfurt_000001_023235_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.1002226322889328
+    ],
+    "frankfurt_000001_057954_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10023962706327438
+    ],
+    "frankfurt_000001_030310_gtFine_color": [
+        "frankfurt_000001_015328_gtFine_color",
+        0.1002490371465683
+    ],
+    "frankfurt_000001_030669_gtFine_color": [
+        "frankfurt_000001_030067_gtFine_color",
+        0.10025663673877716
+    ],
+    "munster_000110_000019_gtFine_color": [
+        "munster_000154_000019_gtFine_color",
+        0.10038898140192032
+    ],
+    "frankfurt_000001_055387_gtFine_color": [
+        "frankfurt_000001_005184_gtFine_color",
+        0.10047873854637146
+    ],
+    "frankfurt_000001_020287_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10051402449607849
+    ],
+    "munster_000108_000019_gtFine_color": [
+        "lindau_000028_000019_gtFine_color",
+        0.10054090619087219
+    ],
+    "munster_000088_000019_gtFine_color": [
+        "munster_000086_000019_gtFine_color",
+        0.10056191682815552
+    ],
+    "frankfurt_000001_017842_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10057657957077026
+    ],
+    "frankfurt_000000_016005_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10058754682540894
+    ],
+    "frankfurt_000000_011007_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.10061530023813248
+    ],
+    "frankfurt_000000_001236_gtFine_color": [
+        "frankfurt_000001_005703_gtFine_color",
+        0.10065778344869614
+    ],
+    "frankfurt_000001_005898_gtFine_color": [
+        "frankfurt_000001_005703_gtFine_color",
+        0.1007223129272461
+    ],
+    "munster_000087_000019_gtFine_color": [
+        "munster_000088_000019_gtFine_color",
+        0.10073018074035645
+    ],
+    "munster_000085_000019_gtFine_color": [
+        "munster_000016_000019_gtFine_color",
+        0.1007855236530304
+    ],
+    "frankfurt_000001_015091_gtFine_color": [
+        "frankfurt_000001_024927_gtFine_color",
+        0.10084176063537598
+    ],
+    "frankfurt_000001_058176_gtFine_color": [
+        "frankfurt_000001_058504_gtFine_color",
+        0.10106697678565979
+    ],
+    "munster_000112_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.10123291611671448
+    ],
+    "frankfurt_000001_062793_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10123948752880096
+    ],
+    "frankfurt_000001_055709_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.10134667903184891
+    ],
+    "frankfurt_000001_042733_gtFine_color": [
+        "frankfurt_000001_010830_gtFine_color",
+        0.10138427466154099
+    ],
+    "munster_000097_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.10146713256835938
+    ],
+    "frankfurt_000001_075984_gtFine_color": [
+        "frankfurt_000001_007285_gtFine_color",
+        0.10152781754732132
+    ],
+    "frankfurt_000001_007285_gtFine_color": [
+        "frankfurt_000001_075984_gtFine_color",
+        0.10152781754732132
+    ],
+    "frankfurt_000000_001751_gtFine_color": [
+        "frankfurt_000000_020215_gtFine_color",
+        0.10157234221696854
+    ],
+    "munster_000056_000019_gtFine_color": [
+        "munster_000163_000019_gtFine_color",
+        0.10157622396945953
+    ],
+    "frankfurt_000001_055172_gtFine_color": [
+        "frankfurt_000001_010830",
+        0.10171674191951752
+    ],
+    "frankfurt_000001_016273_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10172072052955627
+    ],
+    "frankfurt_000001_058057_gtFine_color": [
+        "frankfurt_000001_072295_gtFine_color",
+        0.10193169116973877
+    ],
+    "frankfurt_000001_055062_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10195153206586838
+    ],
+    "frankfurt_000000_018797_gtFine_color": [
+        "frankfurt_000001_024927_gtFine_color",
+        0.10214415192604065
+    ],
+    "frankfurt_000001_012699_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10214449465274811
+    ],
+    "frankfurt_000001_064651_gtFine_color": [
+        "frankfurt_000001_064798_gtFine_color",
+        0.10223895311355591
+    ],
+    "frankfurt_000001_044525_gtFine_color": [
+        "frankfurt_000001_046126_gtFine_color",
+        0.10223895311355591
+    ],
+    "frankfurt_000001_046126_gtFine_color": [
+        "frankfurt_000001_044525_gtFine_color",
+        0.10223895311355591
+    ],
+    "frankfurt_000001_060135_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.10229802131652832
+    ],
+    "lindau_000019_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.10229893028736115
+    ],
+    "munster_000006_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.10231463611125946
+    ],
+    "frankfurt_000001_073088_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10243663936853409
+    ],
+    "frankfurt_000001_050686_gtFine_color": [
+        "frankfurt_000001_068772_gtFine_color",
+        0.10252870619297028
+    ],
+    "munster_000157_000019_gtFine_color": [
+        "lindau_000028_000019_gtFine_color",
+        0.10266087204217911
+    ],
+    "lindau_000027_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.102679044008255
+    ],
+    "frankfurt_000001_018113_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10267999768257141
+    ],
+    "frankfurt_000001_054077_gtFine_color": [
+        "frankfurt_000001_013496",
+        0.10270023345947266
+    ],
+    "frankfurt_000001_042384_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10285675525665283
+    ],
+    "frankfurt_000001_044227_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.1029997169971466
+    ],
+    "munster_000080_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.10302816331386566
+    ],
+    "lindau_000034_000019_gtFine_color": [
+        "lindau_000028_000019_gtFine_color",
+        0.10306784510612488
+    ],
+    "munster_000148_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.10309746861457825
+    ],
+    "lindau_000017_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.10328491032123566
+    ],
+    "frankfurt_000000_011074_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10355804860591888
+    ],
+    "munster_000147_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.10357772558927536
+    ],
+    "munster_000142_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.10359056293964386
+    ],
+    "munster_000172_000019_gtFine_color": [
+        "munster_000065_000019_gtFine_color",
+        0.1036258190870285
+    ],
+    "frankfurt_000001_071288_gtFine_color": [
+        "frankfurt_000001_046504_gtFine_color",
+        0.10366843640804291
+    ],
+    "frankfurt_000001_007407_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10371170938014984
+    ],
+    "frankfurt_000001_038245_gtFine_color": [
+        "frankfurt_000000_008206_gtFine_color",
+        0.10375452041625977
+    ],
+    "frankfurt_000001_073911_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.1037677749991417
+    ],
+    "frankfurt_000001_005410_gtFine_color": [
+        "frankfurt_000001_057954_gtFine_color",
+        0.10378997027873993
+    ],
+    "munster_000106_000019_gtFine_color": [
+        "munster_000021_000019_gtFine_color",
+        0.10379309207201004
+    ],
+    "frankfurt_000001_049209_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.10389197617769241
+    ],
+    "frankfurt_000001_012738_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10400327295064926
+    ],
+    "lindau_000025_000019_gtFine_color": [
+        "lindau_000050_000019_gtFine_color",
+        0.10402385890483856
+    ],
+    "lindau_000033_000019_gtFine_color": [
+        "lindau_000041_000019_gtFine_color",
+        0.1040649563074112
+    ],
+    "munster_000160_000019_gtFine_color": [
+        "lindau_000038_000019_gtFine_color",
+        0.10423906147480011
+    ],
+    "lindau_000038_000019_gtFine_color": [
+        "munster_000160_000019_gtFine_color",
+        0.10423906147480011
+    ],
+    "frankfurt_000000_002196_gtFine_color": [
+        "frankfurt_000000_000294_gtFine_color",
+        0.10424727201461792
+    ],
+    "lindau_000052_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.1042775809764862
+    ],
+    "munster_000005_000019_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10433356463909149
+    ],
+    "frankfurt_000001_062396_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10450555384159088
+    ],
+    "munster_000030_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.10451366007328033
+    ],
+    "lindau_000010_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.10456080734729767
+    ],
+    "frankfurt_000001_013710_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10459379851818085
+    ],
+    "munster_000062_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.10460078716278076
+    ],
+    "frankfurt_000001_059789_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10467427968978882
+    ],
+    "frankfurt_000001_014565_gtFine_color": [
+        "frankfurt_000001_028854_gtFine_color",
+        0.10467793047428131
+    ],
+    "lindau_000046_000019_gtFine_color": [
+        "frankfurt_000001_023369_gtFine_color",
+        0.10468477010726929
+    ],
+    "lindau_000026_000019_gtFine_color": [
+        "lindau_000044_000019_gtFine_color",
+        0.10474229604005814
+    ],
+    "munster_000014_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.10476568341255188
+    ],
+    "lindau_000014_000019_gtFine_color": [
+        "munster_000152_000019_gtFine_color",
+        0.10489735007286072
+    ],
+    "munster_000045_000019_gtFine_color": [
+        "lindau_000028_000019_gtFine_color",
+        0.10492630302906036
+    ],
+    "frankfurt_000001_065617_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10502941161394119
+    ],
+    "frankfurt_000001_048654_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.1050339937210083
+    ],
+    "frankfurt_000001_071781_gtFine_color": [
+        "frankfurt_000001_072295_gtFine_color",
+        0.10511893033981323
+    ],
+    "frankfurt_000001_066832_gtFine_color": [
+        "frankfurt_000000_020215_gtFine_color",
+        0.10512499511241913
+    ],
+    "munster_000164_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.10534898936748505
+    ],
+    "frankfurt_000001_004859_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10535456240177155
+    ],
+    "frankfurt_000001_027325_gtFine_color": [
+        "frankfurt_000001_031416_gtFine_color",
+        0.10535675287246704
+    ],
+    "frankfurt_000001_064130_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10546814650297165
+    ],
+    "lindau_000045_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.10551297664642334
+    ],
+    "frankfurt_000001_046272_gtFine_color": [
+        "frankfurt_000000_008206_gtFine_color",
+        0.10553702712059021
+    ],
+    "frankfurt_000001_035864_gtFine_color": [
+        "frankfurt_000001_067735_gtFine_color",
+        0.10570042580366135
+    ],
+    "frankfurt_000001_062016_gtFine_color": [
+        "frankfurt_000001_008200_gtFine_color",
+        0.10580559074878693
+    ],
+    "frankfurt_000001_083029_gtFine_color": [
+        "frankfurt_000001_019969_gtFine_color",
+        0.10586991906166077
+    ],
+    "munster_000069_000019_gtFine_color": [
+        "munster_000092_000019_gtFine_color",
+        0.10594035685062408
+    ],
+    "munster_000007_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.105970099568367
+    ],
+    "frankfurt_000001_070099_gtFine_color": [
+        "frankfurt_000001_035144_gtFine_color",
+        0.10597232729196548
+    ],
+    "frankfurt_000001_057478_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10608746111392975
+    ],
+    "frankfurt_000000_004617_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10610902309417725
+    ],
+    "frankfurt_000000_022254_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.1063893735408783
+    ],
+    "lindau_000023_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.10655078291893005
+    ],
+    "frankfurt_000001_043564_gtFine_color": [
+        "frankfurt_000001_044227_gtFine_color",
+        0.10660350322723389
+    ],
+    "frankfurt_000000_008451_gtFine_color": [
+        "frankfurt_000000_008206_gtFine_color",
+        0.10676850378513336
+    ],
+    "frankfurt_000001_001464_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10694029927253723
+    ],
+    "frankfurt_000001_021406_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10694515705108643
+    ],
+    "frankfurt_000001_000538_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10706442594528198
+    ],
+    "frankfurt_000001_041074_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10709044337272644
+    ],
+    "lindau_000048_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.1070951446890831
+    ],
+    "frankfurt_000001_039895_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10720083117485046
+    ],
+    "frankfurt_000001_055603_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10730016231536865
+    ],
+    "frankfurt_000000_014480_gtFine_color": [
+        "frankfurt_000001_048196",
+        0.10741868615150452
+    ],
+    "frankfurt_000001_077434_gtFine_color": [
+        "frankfurt_000001_034047_gtFine_color",
+        0.10745257139205933
+    ],
+    "lindau_000036_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.10750596970319748
+    ],
+    "munster_000057_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.10765805095434189
+    ],
+    "munster_000165_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.10766349732875824
+    ],
+    "frankfurt_000001_061763_gtFine_color": [
+        "frankfurt_000001_080091_gtFine_color",
+        0.10772785544395447
+    ],
+    "lindau_000031_000019_gtFine_color": [
+        "lindau_000018_000019_gtFine_color",
+        0.1078469455242157
+    ],
+    "frankfurt_000000_007365_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10790520906448364
+    ],
+    "frankfurt_000001_066438_gtFine_color": [
+        "frankfurt_000001_048196",
+        0.1079406589269638
+    ],
+    "munster_000025_000019_gtFine_color": [
+        "munster_000072_000019_gtFine_color",
+        0.10797255486249924
+    ],
+    "frankfurt_000000_021879_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10800790786743164
+    ],
+    "munster_000019_000019_gtFine_color": [
+        "munster_000021_000019_gtFine_color",
+        0.10802733153104782
+    ],
+    "frankfurt_000001_076502_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.10832268744707108
+    ],
+    "lindau_000004_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.10840022563934326
+    ],
+    "lindau_000032_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.10840111970901489
+    ],
+    "lindau_000040_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.10842284560203552
+    ],
+    "munster_000022_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.10846854001283646
+    ],
+    "munster_000120_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.10875119268894196
+    ],
+    "frankfurt_000001_050149_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.10881397128105164
+    ],
+    "frankfurt_000001_055306_gtFine_color": [
+        "frankfurt_000001_057954_gtFine_color",
+        0.10883338749408722
+    ],
+    "munster_000113_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.10884475708007812
+    ],
+    "munster_000036_000019_gtFine_color": [
+        "munster_000104_000019_gtFine_color",
+        0.10888205468654633
+    ],
+    "munster_000129_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.1089639812707901
+    ],
+    "frankfurt_000001_041664_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10896717011928558
+    ],
+    "munster_000093_000019_gtFine_color": [
+        "munster_000165_000019_gtFine_color",
+        0.10906617343425751
+    ],
+    "munster_000023_000019_gtFine_color": [
+        "munster_000062_000019_gtFine_color",
+        0.10909397900104523
+    ],
+    "frankfurt_000001_043395_gtFine_color": [
+        "frankfurt_000001_048196",
+        0.10920067131519318
+    ],
+    "frankfurt_000001_068208_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.10927954316139221
+    ],
+    "frankfurt_000001_017459_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.10943098366260529
+    ],
+    "munster_000064_000019_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.10959279537200928
+    ],
+    "munster_000122_000019_gtFine_color": [
+        "munster_000123_000019_gtFine_color",
+        0.1096138060092926
+    ],
+    "munster_000123_000019_gtFine_color": [
+        "munster_000122_000019_gtFine_color",
+        0.1096138060092926
+    ],
+    "lindau_000042_000019_gtFine_color": [
+        "lindau_000041_000019_gtFine_color",
+        0.1097966879606247
+    ],
+    "frankfurt_000001_037705_gtFine_color": [
+        "frankfurt_000001_028232_gtFine_color",
+        0.10982097685337067
+    ],
+    "munster_000020_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.10990750044584274
+    ],
+    "munster_000071_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.10993828624486923
+    ],
+    "munster_000037_000019_gtFine_color": [
+        "munster_000076_000019_gtFine_color",
+        0.11020517349243164
+    ],
+    "frankfurt_000001_052594_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.11036349833011627
+    ],
+    "frankfurt_000000_009561_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.11045020818710327
+    ],
+    "munster_000161_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.1104729175567627
+    ],
+    "frankfurt_000001_040732_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.11058538407087326
+    ],
+    "frankfurt_000000_016286_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.11069522798061371
+    ],
+    "munster_000050_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11096376180648804
+    ],
+    "munster_000111_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.1111043393611908
+    ],
+    "munster_000125_000019_gtFine_color": [
+        "munster_000163_000019_gtFine_color",
+        0.11113615334033966
+    ],
+    "frankfurt_000001_066092_gtFine_color": [
+        "frankfurt_000001_010600_gtFine_color",
+        0.11117689311504364
+    ],
+    "munster_000024_000019_gtFine_color": [
+        "lindau_000041_000019_gtFine_color",
+        0.11122877895832062
+    ],
+    "frankfurt_000001_003588_gtFine_color": [
+        "frankfurt_000001_005184_gtFine_color",
+        0.11126621067523956
+    ],
+    "lindau_000024_000019_gtFine_color": [
+        "lindau_000018_000019_gtFine_color",
+        0.11135715991258621
+    ],
+    "frankfurt_000001_040575_gtFine_color": [
+        "frankfurt_000001_034047_gtFine_color",
+        0.11147452890872955
+    ],
+    "munster_000143_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11162048578262329
+    ],
+    "frankfurt_000000_009688_gtFine_color": [
+        "frankfurt_000001_005184_gtFine_color",
+        0.1116950511932373
+    ],
+    "munster_000158_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.11180676519870758
+    ],
+    "munster_000141_000019_gtFine_color": [
+        "munster_000140_000019_gtFine_color",
+        0.1118922084569931
+    ],
+    "frankfurt_000001_029086_gtFine_color": [
+        "frankfurt_000001_041517_gtFine_color",
+        0.11196430772542953
+    ],
+    "frankfurt_000001_041517_gtFine_color": [
+        "frankfurt_000001_029086_gtFine_color",
+        0.11196430772542953
+    ],
+    "munster_000153_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11196894943714142
+    ],
+    "frankfurt_000000_011461_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.11204153299331665
+    ],
+    "frankfurt_000001_055538_gtFine_color": [
+        "frankfurt_000001_014221",
+        0.11208706349134445
+    ],
+    "lindau_000029_000019_gtFine_color": [
+        "lindau_000042_000019_gtFine_color",
+        0.11213470995426178
+    ],
+    "munster_000135_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.1121964082121849
+    ],
+    "munster_000059_000019_gtFine_color": [
+        "lindau_000018_000019_gtFine_color",
+        0.11225225031375885
+    ],
+    "frankfurt_000001_025713_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.1122671589255333
+    ],
+    "frankfurt_000001_053102_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.11227697134017944
+    ],
+    "frankfurt_000001_025921_gtFine_color": [
+        "frankfurt_000001_075296_gtFine_color",
+        0.11228853464126587
+    ],
+    "frankfurt_000001_066574_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.11237567663192749
+    ],
+    "frankfurt_000001_011835_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.11238709092140198
+    ],
+    "frankfurt_000001_083199_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.11255696415901184
+    ],
+    "frankfurt_000001_025512_gtFine_color": [
+        "frankfurt_000001_034047_gtFine_color",
+        0.11260300129652023
+    ],
+    "munster_000003_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.1127663403749466
+    ],
+    "lindau_000005_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.11287568509578705
+    ],
+    "frankfurt_000001_060545_gtFine_color": [
+        "frankfurt_000001_057478_gtFine_color",
+        0.11305925250053406
+    ],
+    "munster_000031_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.11306305229663849
+    ],
+    "frankfurt_000001_016462_gtFine_color": [
+        "frankfurt_000001_005410_gtFine_color",
+        0.11318086832761765
+    ],
+    "munster_000090_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.1133514791727066
+    ],
+    "frankfurt_000001_032018_gtFine_color": [
+        "frankfurt_000000_003357_gtFine_color",
+        0.11337129771709442
+    ],
+    "munster_000002_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.11346517503261566
+    ],
+    "munster_000015_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.11351791024208069
+    ],
+    "munster_000058_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11361674964427948
+    ],
+    "frankfurt_000001_062250_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.11362512409687042
+    ],
+    "munster_000068_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11402309685945511
+    ],
+    "frankfurt_000000_003920_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.1141727864742279
+    ],
+    "munster_000001_000019_gtFine_color": [
+        "munster_000163_000019_gtFine_color",
+        0.11439651995897293
+    ],
+    "munster_000034_000019_gtFine_color": [
+        "lindau_000029_000019_gtFine_color",
+        0.11467325687408447
+    ],
+    "lindau_000056_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.1150980293750763
+    ],
+    "munster_000079_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.11524209380149841
+    ],
+    "frankfurt_000001_014406_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.11533251404762268
+    ],
+    "munster_000155_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11534914374351501
+    ],
+    "munster_000070_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.11543073505163193
+    ],
+    "lindau_000000_000019_gtFine_color": [
+        "munster_000067_000019_gtFine_color",
+        0.11549314856529236
+    ],
+    "munster_000138_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.1156478300690651
+    ],
+    "munster_000078_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.1157490611076355
+    ],
+    "munster_000013_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.1158696785569191
+    ],
+    "munster_000159_000019_gtFine_color": [
+        "lindau_000018_000019_gtFine_color",
+        0.11592400074005127
+    ],
+    "frankfurt_000001_044787_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.11613528430461884
+    ],
+    "munster_000162_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.11616094410419464
+    ],
+    "munster_000101_000019_gtFine_color": [
+        "munster_000093_000019_gtFine_color",
+        0.11629574745893478
+    ],
+    "lindau_000057_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.11672679334878922
+    ],
+    "frankfurt_000001_004327_gtFine_color": [
+        "frankfurt_000001_005410_gtFine_color",
+        0.11676619946956635
+    ],
+    "frankfurt_000000_017476_gtFine_color": [
+        "frankfurt_000001_014565_gtFine_color",
+        0.11679726839065552
+    ],
+    "frankfurt_000001_013016_gtFine_color": [
+        "frankfurt_000001_011835_gtFine_color",
+        0.11683225631713867
+    ],
+    "munster_000010_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.11691421270370483
+    ],
+    "munster_000091_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11692120879888535
+    ],
+    "munster_000040_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.11715760827064514
+    ],
+    "munster_000103_000019_gtFine_color": [
+        "munster_000027_000019_gtFine_color",
+        0.11719110608100891
+    ],
+    "frankfurt_000000_017228_gtFine_color": [
+        "frankfurt_000001_049298_gtFine_color",
+        0.11727666109800339
+    ],
+    "frankfurt_000001_064305_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.1173102855682373
+    ],
+    "frankfurt_000000_010351_gtFine_color": [
+        "frankfurt_000001_029086_gtFine_color",
+        0.11731816828250885
+    ],
+    "lindau_000037_000019_gtFine_color": [
+        "lindau_000018_000019_gtFine_color",
+        0.11757546663284302
+    ],
+    "frankfurt_000001_020693_gtFine_color": [
+        "frankfurt_000001_046126_gtFine_color",
+        0.1175869032740593
+    ],
+    "frankfurt_000001_062653_gtFine_color": [
+        "frankfurt_000001_014565_gtFine_color",
+        0.11760038137435913
+    ],
+    "munster_000054_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.11767113208770752
+    ],
+    "munster_000077_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.11770163476467133
+    ],
+    "lindau_000043_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.1178041622042656
+    ],
+    "munster_000133_000019_gtFine_color": [
+        "munster_000122_000019_gtFine_color",
+        0.11782410740852356
+    ],
+    "munster_000137_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.11856499314308167
+    ],
+    "munster_000049_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.11867819726467133
+    ],
+    "lindau_000049_000019_gtFine_color": [
+        "lindau_000050_000019_gtFine_color",
+        0.11907210946083069
+    ],
+    "munster_000061_000019_gtFine_color": [
+        "munster_000023_000019_gtFine_color",
+        0.11934331059455872
+    ],
+    "munster_000044_000019_gtFine_color": [
+        "munster_000006_000019_gtFine_color",
+        0.11946368217468262
+    ],
+    "lindau_000035_000019_gtFine_color": [
+        "frankfurt_000001_009058_gtFine_color",
+        0.11979556083679199
+    ],
+    "lindau_000022_000019_gtFine_color": [
+        "lindau_000050_000019_gtFine_color",
+        0.12012887001037598
+    ],
+    "munster_000033_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.12067686021327972
+    ],
+    "munster_000115_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.12086812406778336
+    ],
+    "munster_000136_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.12114782631397247
+    ],
+    "munster_000102_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.12116801738739014
+    ],
+    "munster_000055_000019_gtFine_color": [
+        "munster_000033_000019_gtFine_color",
+        0.12125016748905182
+    ],
+    "munster_000173_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.12128934264183044
+    ],
+    "munster_000084_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.12148833274841309
+    ],
+    "lindau_000001_000019_gtFine_color": [
+        "frankfurt_000001_014565_gtFine_color",
+        0.12159662693738937
+    ],
+    "munster_000132_000019_gtFine_color": [
+        "munster_000095_000019_gtFine_color",
+        0.12188407778739929
+    ],
+    "munster_000032_000019_gtFine_color": [
+        "munster_000129_000019_gtFine_color",
+        0.12207532674074173
+    ],
+    "munster_000094_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.12209025025367737
+    ],
+    "munster_000124_000019_gtFine_color": [
+        "munster_000075_000019_gtFine_color",
+        0.12219734489917755
+    ],
+    "lindau_000015_000019_gtFine_color": [
+        "munster_000037_000019_gtFine_color",
+        0.1224551722407341
+    ],
+    "frankfurt_000001_057181_gtFine_color": [
+        "frankfurt_000001_057954_gtFine_color",
+        0.1225832849740982
+    ],
+    "lindau_000003_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.12294209003448486
+    ],
+    "lindau_000039_000019_gtFine_color": [
+        "munster_000144_000019_gtFine_color",
+        0.12333013117313385
+    ],
+    "frankfurt_000000_005898_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.1233421191573143
+    ],
+    "lindau_000009_000019_gtFine_color": [
+        "lindau_000018_000019_gtFine_color",
+        0.12334777414798737
+    ],
+    "munster_000048_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.12337902188301086
+    ],
+    "frankfurt_000001_010444_gtFine_color": [
+        "frankfurt_000000_008206_gtFine_color",
+        0.12340789288282394
+    ],
+    "munster_000083_000019_gtFine_color": [
+        "munster_000021_000019_gtFine_color",
+        0.12354686856269836
+    ],
+    "frankfurt_000001_044413_gtFine_color": [
+        "frankfurt_000001_016029_gtFine_color",
+        0.12377701699733734
+    ],
+    "munster_000041_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.12384578585624695
+    ],
+    "munster_000051_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.12403836101293564
+    ],
+    "frankfurt_000001_061682_gtFine_color": [
+        "frankfurt_000001_080391_gtFine_color",
+        0.12439107894897461
+    ],
+    "munster_000168_000019_gtFine_color": [
+        "munster_000021_000019_gtFine_color",
+        0.12442450225353241
+    ],
+    "frankfurt_000001_034816_gtFine_color": [
+        "frankfurt_000001_007622_gtFine_color",
+        0.12466612458229065
+    ],
+    "munster_000119_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.12483803927898407
+    ],
+    "munster_000131_000019_gtFine_color": [
+        "lindau_000004_000019_gtFine_color",
+        0.125131756067276
+    ],
+    "lindau_000016_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.12517035007476807
+    ],
+    "munster_000130_000019_gtFine_color": [
+        "munster_000111_000019_gtFine_color",
+        0.12558841705322266
+    ],
+    "lindau_000058_000019_gtFine_color": [
+        "munster_000122_000019_gtFine_color",
+        0.1257442831993103
+    ],
+    "lindau_000007_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.1257835328578949
+    ],
+    "munster_000171_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.125787615776062
+    ],
+    "lindau_000008_000019_gtFine_color": [
+        "munster_000060_000019_gtFine_color",
+        0.12647822499275208
+    ],
+    "lindau_000011_000019_gtFine_color": [
+        "lindau_000021_000019_gtFine_color",
+        0.12663421034812927
+    ],
+    "munster_000169_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.12694138288497925
+    ],
+    "munster_000038_000019_gtFine_color": [
+        "lindau_000041_000019_gtFine_color",
+        0.12706618010997772
+    ],
+    "frankfurt_000001_065850_gtFine_color": [
+        "frankfurt_000001_012038_gtFine_color",
+        0.12717747688293457
+    ],
+    "munster_000063_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.12761405110359192
+    ],
+    "munster_000117_000019_gtFine_color": [
+        "munster_000124_000019_gtFine_color",
+        0.12807345390319824
+    ],
+    "munster_000105_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.12819749116897583
+    ],
+    "frankfurt_000001_051516_gtFine_color": [
+        "frankfurt_000000_015389_gtFine_color",
+        0.12822911143302917
+    ],
+    "munster_000126_000019_gtFine_color": [
+        "munster_000129_000019_gtFine_color",
+        0.1284206360578537
+    ],
+    "lindau_000055_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.12889601290225983
+    ],
+    "lindau_000053_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.12929809093475342
+    ],
+    "munster_000114_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.130574569106102
+    ],
+    "munster_000052_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.1307784467935562
+    ],
+    "munster_000134_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.1307947039604187
+    ],
+    "munster_000109_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.13113240897655487
+    ],
+    "munster_000156_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.13130390644073486
+    ],
+    "munster_000128_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.13179728388786316
+    ],
+    "munster_000046_000019_gtFine_color": [
+        "lindau_000018_000019_gtFine_color",
+        0.13255149126052856
+    ],
+    "frankfurt_000001_060906_gtFine_color": [
+        "frankfurt_000001_032018_gtFine_color",
+        0.13280445337295532
+    ],
+    "frankfurt_000001_041354_gtFine_color": [
+        "frankfurt_000001_009504_gtFine_color",
+        0.13322558999061584
+    ],
+    "lindau_000012_000019_gtFine_color": [
+        "lindau_000051_000019_gtFine_color",
+        0.13386651873588562
+    ],
+    "munster_000000_000019_gtFine_color": [
+        "munster_000004_000019_gtFine_color",
+        0.13609129190444946
+    ],
+    "munster_000127_000019_gtFine_color": [
+        "munster_000172_000019_gtFine_color",
+        0.1381845772266388
+    ],
+    "munster_000170_000019_gtFine_color": [
+        "munster_000122_000019_gtFine_color",
+        0.14055891335010529
+    ],
+    "munster_000026_000019_gtFine_color": [
+        "lindau_000050_000019_gtFine_color",
+        0.14087429642677307
+    ],
+    "munster_000047_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.14097155630588531
+    ],
+    "munster_000167_000019_gtFine_color": [
+        "munster_000029_000019_gtFine_color",
+        0.1413896232843399
+    ],
+    "lindau_000002_000019_gtFine_color": [
+        "frankfurt_000001_029086_gtFine_color",
+        0.14150777459144592
+    ],
+    "munster_000121_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.14155779778957367
+    ],
+    "munster_000166_000019_gtFine_color": [
+        "munster_000129_000019_gtFine_color",
+        0.1454121321439743
+    ],
+    "lindau_000054_000019_gtFine_color": [
+        "munster_000018_000019_gtFine_color",
+        0.14549142122268677
+    ],
+    "lindau_000013_000019_gtFine_color": [
+        "munster_000066_000019_gtFine_color",
+        0.14629216492176056
+    ],
+    "munster_000100_000019_gtFine_color": [
+        "munster_000038_000019_gtFine_color",
+        0.14760863780975342
+    ],
+    "munster_000039_000019_gtFine_color": [
+        "munster_000122_000019_gtFine_color",
+        0.1490202695131302
+    ],
+    "munster_000118_000019_gtFine_color": [
+        "munster_000122_000019_gtFine_color",
+        0.1496533900499344
+    ],
+    "munster_000116_000019_gtFine_color": [
+        "munster_000124_000019_gtFine_color",
+        0.15527208149433136
+    ]
+}

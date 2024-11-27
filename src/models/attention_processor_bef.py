@@ -66,6 +66,7 @@ class MatchAttnProcessor(nn.Module):
         residual = hidden_states
         if attn.spatial_norm is not None:
             hidden_states = attn.spatial_norm(hidden_states, temb)
+
         input_ndim = hidden_states.ndim
 
         if input_ndim == 4:
@@ -112,85 +113,58 @@ class MatchAttnProcessor(nn.Module):
         scale = None
         dropout_p=0.0
         scale_factor = 1 / math.sqrt(query.size(-1)) if scale is None else scale
-        # with torch.no_grad():
+
         self.attn_map = query @ key.transpose(-2, -1) * scale_factor
-        self.before_attn_map = self.attn_map.clone()
-        # # print("before:", self.attn_map.shape)
-        # if self.matcher is not None:
-        #     attn_size = self.attn_map.shape[-1]
-        #     if self.attn_map.shape[-2] * 2 == self.attn_map.shape[-1]:
-        #         if self.hard_corr: 
-        #             # self.seg_corr = torch.where(self.seg_corr == 0, torch.tensor(-1, device=self.seg_corr.device), self.seg_corr)
-        #             corr_input = F.interpolate(
-        #                 self.seg_corr.float().unsqueeze(1), size = (attn_size // 2, attn_size // 2), mode="nearest"
-        #             )
-        #             attn_size_sqrt = int(math.sqrt(attn_size // 2))
-        #             self.attn_map[:, :, :, attn_size // 2:] = self.attn_map[:, :, :, attn_size//2: ] + corr_input.repeat(1, self.attn_map.shape[1], 1, 1)
-        #         else:
-        #             # self.attn_map ; [b, h]
-        #             if attn_size != 8192:
-        #                 corr_input = torch.cat([
-        #                     self.attn_map[:, :, :, attn_size // 2:].clone().detach(),
-        #                     F.interpolate(self.seg_corr.float().unsqueeze(1), size=(attn_size // 2, attn_size // 2), mode="nearest")
-        #                 ], dim=1) # [b 9, attn_size // 2, attn_size // 2]
-        #                 attn_size_sqrt = int(math.sqrt(attn_size // 2))
-        #                 corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=attn_size_sqrt, ws=attn_size_sqrt, ht=attn_size_sqrt, wt=attn_size_sqrt)
-                        
-        #                 refined_seg_corr = self.matcher(corr_input, self.blocks)
-        #                 temp_ = refined_seg_corr.max() 
-        #                 refined_seg_corr = ((rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)')))  - temp_ / 4
-        #                 # refined_seg_corr = torch.where(refined_seg_corr == 0, torch.tensor(-temp_ / 4,  dtype=refined_seg_corr.dtype, device=refined_seg_corr.device), refined_seg_corr)
+        
+        if self.matcher is not None:
+            attn_size = self.attn_map.shape[-1]
 
-        #                 if refined_seg_corr.shape[0] == 2: # inference
-        #                     # refined_seg_corr[refined_seg_corr==0] = -temp_
-        #                     refined_seg_corr[0, :, :, :] = 0
-        #                 self.attn_map[:, :, :, attn_size//2: ] = self.attn_map[:, :, :, attn_size // 2:] + refined_seg_corr
-        #             else:
-        #                 corr_input = torch.cat([
-        #                     F.interpolate(self.attn_map[:, :, :, attn_size // 2:].clone().detach(), size = (32*32, 32*32), mode="bilinear", align_corners=False),
-        #                     self.seg_corr.float().unsqueeze(1),
-        #                 ], dim=1)
-                        
-        #                 corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
-        #                 refined_seg_corr = self.matcher(corr_input, self.blocks)
-        #                 temp_ = refined_seg_corr.max() 
-        #                 refined_seg_corr = rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)') - temp_ / 4
-        #                 # refined_seg_corr = torch.where(refined_seg_corr == 0, torch.tensor(-temp_/4, dtype=refined_seg_corr.dtype, device=refined_seg_corr.device), refined_seg_corr)
+            if self.hard_corr and self.attn_map.shape[-2] * 2 == self.attn_map.shape[-1]:
+                corr_input = F.interpolate(
+                    self.seg_corr.float().unsqueeze(1), size = (attn_size // 2, attn_size // 2), mode="nearest"
+                )
+                attn_size_sqrt = int(math.sqrt(attn_size // 2))
+                self.attn_map[:, :, :, attn_size // 2:] = self.attn_map[:, :, :, attn_size//2: ] + corr_input.repeat(1, self.attn_map.shape[1], 1, 1)
+            else:
 
-        #                 if refined_seg_corr.shape[0] == 2:
-        #                     # refined_seg_corr[refined_seg_corr==0] = -temp_
-        #                     refined_seg_corr[0, :, :, :] = 0
-        #                 refined_seg_corr = F.interpolate(refined_seg_corr, size = (attn_size // 2, attn_size // 2), mode = 'bilinear', align_corners=False)
-        #                 self.attn_map[:, : , :, attn_size // 2:] = self.attn_map[:, :, :, attn_size//2:] + refined_seg_corr
-        #                 # corr_input = torch.cat([F.interpolate(self.attn_map[:, :, :, attn_size//2:].mean(1).unsqueeze(1).clone().detach(), size=(32*32, 32*32), mode='bilinear', align_corners=False), self.seg_corr.float().unsqueeze(1)], dim=1)
-        #                 # corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
-        #                 # refined_seg_corr = self.matcher(corr_input)
-        #                 # refined_seg_corr = rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)')
-        #                 # refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
-        #                 # print(refined_seg_corr) 
-        #                 # print(self.attn_map.max(), self.attn_map.min(), refined_seg_corr.max(), refined_seg_corr.min(), int(math.sqrt(attn_size // 2)))
-        #                 # self.attn_map[:,:,:,attn_size//2:] = self.attn_map[:,:,:, attn_size//2:] + (refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1) - 4)
-        #             # else:
-        #             #     attn_size_sqrt = int(math.sqrt(attn_size // 2))
-        #             #     corr_input = torch.cat([
-        #             #         F.interpolate
-        #             #     ])
-        #             #     corr_input = torch.cat([F.interpolate(self.attn_map[:, :, :, attn_size//2:].mean(1).unsqueeze(1).clone().detach(), size=(32*32, 32*32), mode='bilinear', align_corners=False), self.seg_corr.float().unsqueeze(1)], dim=1)
-        #             #     corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
-        #             #     refined_seg_corr = self.matcher(corr_input)
-        #             #     temp_ = refined_seg_corr.max() 
-        #             #     refined_seg_corr = (rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)'))# - temp_/2) * attn_size_sqrt
-                        
-        #             #     refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
-                        
-        #             #     self.attn_map[:,:,:,attn_size//2:] = self.attn_map[:,:,:, attn_size//2:] + (refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1))
+                if self.attn_map.shape[-2] * 2 == self.attn_map.shape[-1]:
 
-        #             torch.cuda.empty_cache() 
-        #             del refined_seg_corr
-        # print("after", self.attn_map.shape)
-        # print(self.attn_map.shape, self.before_attn_map.shape)
+                    if attn_size != 8192:
+                        
+                        corr_input = torch.cat([
+                            self.attn_map[:, :, :, attn_size // 2:].mean(1).unsqueeze(1).clone().detach(),
+                            F.interpolate(self.seg_corr.float().unsqueeze(1), size=(attn_size // 2, attn_size // 2), mode="nearest")
+                        ], dim=1)
+
+                        attn_size_sqrt = int(math.sqrt(attn_size // 2))
+                        corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=attn_size_sqrt, ws=attn_size_sqrt, ht=attn_size_sqrt, wt=attn_size_sqrt)
+                        refined_seg_corr = self.matcher(corr_input)
+                        temp_ = refined_seg_corr.max()
+                        refined_seg_corr = ((rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)')))# - temp_ / 2)  # * attn_size_sqrt 
+                        self.attn_map[:, :, :, attn_size//2: ] = self.attn_map[:, :, :, attn_size // 2:] + refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1)
+                        # corr_input = torch.cat([F.interpolate(self.attn_map[:, :, :, attn_size//2:].mean(1).unsqueeze(1).clone().detach(), size=(32*32, 32*32), mode='bilinear', align_corners=False), self.seg_corr.float().unsqueeze(1)], dim=1)
+                        # corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
+                        # refined_seg_corr = self.matcher(corr_input)
+                        # refined_seg_corr = rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)')
+                        # refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
+                        # print(refined_seg_corr) 
+                        # print(self.attn_map.max(), self.attn_map.min(), refined_seg_corr.max(), refined_seg_corr.min(), int(math.sqrt(attn_size // 2)))
+                        # self.attn_map[:,:,:,attn_size//2:] = self.attn_map[:,:,:, attn_size//2:] + (refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1) - 4)
+                    else:
+                        attn_size_sqrt = int(math.sqrt(attn_size // 2))
+                        corr_input = torch.cat([F.interpolate(self.attn_map[:, :, :, attn_size//2:].mean(1).unsqueeze(1).clone().detach(), size=(32*32, 32*32), mode='bilinear', align_corners=False), self.seg_corr.float().unsqueeze(1)], dim=1)
+                        corr_input = rearrange(corr_input, 'b c (hs ws) (ht wt) -> b c hs ws ht wt', hs=32, ws=32, ht=32, wt=32)
+                        refined_seg_corr = self.matcher(corr_input)
+                        temp_ = refined_seg_corr.max() 
+                        refined_seg_corr = (rearrange(refined_seg_corr, 'b c hs ws ht wt -> b c (hs ws) (ht wt)'))# - temp_/2) * attn_size_sqrt
+                        
+                        refined_seg_corr = F.interpolate(refined_seg_corr, size=(attn_size//2, attn_size//2),mode='bilinear',align_corners=False)
+                        
+                        self.attn_map[:,:,:,attn_size//2:] = self.attn_map[:,:,:, attn_size//2:] + (refined_seg_corr.repeat(1, self.attn_map.shape[1], 1, 1))
+
+                    torch.cuda.empty_cache() 
+                    del refined_seg_corr
         attn_weight = self.attn_map
-        # del self.attn_map
         attn_weight = torch.softmax(attn_weight, dim=-1)
         # self.is_train = False
         attn_weight = torch.dropout(attn_weight, dropout_p, train=True)

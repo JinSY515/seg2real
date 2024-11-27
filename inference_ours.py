@@ -40,8 +40,10 @@ from tqdm.auto import tqdm
 from transformers import (CLIPTextModel, CLIPTextModelWithProjection,
                           CLIPTokenizer, CLIPVisionModelWithProjection)
 from src.models.controlnext import ControlNeXtModel
-from src.models.matching_module import OurModel
-mode = "controlnext"
+from safetensors.torch import load_file
+from diffusers.models.attention_processor import XFormersAttnProcessor, LoRAXFormersAttnProcessor
+
+mode = "ours"
     
 if mode == "controlnext":
     from src.models.mutual_self_attention import ReferenceAttentionControl
@@ -53,6 +55,78 @@ elif mode == "masactrl":
 elif mode == "sa_aug":
     from src.models.mutual_self_attention import ReferenceAttentionControl
     from src.pipelines.pipeline_seg2real_controlnext_abl import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
+elif mode == "ours":
+    from src.models.mutual_self_attention import ReferenceAttentionControl
+    from src.pipelines.pipeline_seg2real_controlnext_ours import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
+    from src.models.matching_module import OurModel
+    from src.models.attention import BasicTransformerBlock
+    from src.models.attention_processor import MatchAttnProcessor
+
+def torch_dfs(model: torch.nn.Module):
+    result = [model]
+    for child in model.children():
+        result += torch_dfs(child)
+    return result
+
+
+def set_up_lora_attn_processor_(unet, blocks, fuse_block="down"):
+    blocks = [m for m in torch_dfs(blocks) if isinstance(m,BasicTransformerBlock)]
+    for idx, m in enumerate(blocks):
+        # if fuse_block=="down":
+        #     hidden_size =unet.config.block_out_channels[-1]
+        # elif fuse_block =="mid":
+        #     block_id = idx
+        #     hidden_size = list(reversed(unet.config.block_out_channels))[block_id]
+        # elif fuse_block=="up":
+        #     block_id=idx 
+        #     hidden_size = unet.config.blocks[block_id]
+        processor = LoRAXFormersAttnProcessor(
+            hidden_size=m.attn1.to_q.out_features,
+            cross_attention_dim=None
+        )
+        processor.requires_grad_(True)
+        m.attn1.processor = processor 
+   
+
+def set_up_lora_attn_processor(unet, fusion_blocks="full"):
+    if fusion_blocks == "full":
+        set_up_lora_attn_processor_(unet, unet.down_blocks, fuse_block="down")
+        set_up_lora_attn_processor_(unet, unet.mid_block, fuse_block="mid")
+        set_up_lora_attn_processor_(unet, unet.up_blocks, fuse_block="up")
+    elif fusion_blocks == "midup":
+        set_up_lora_attn_processor_(unet, unet.mid_block, fuse_block="mid")
+        set_up_lora_attn_processor_(unet, unet.up_blocks, fuse_block="up")
+    elif fusion_blocks == "up":
+        set_up_lora_attn_processor_(unet, unet.up_blocks, fuse_block="up")
+    
+def set_up_match_attn_processor_(blocks):
+    for m in torch_dfs(blocks):
+        if isinstance(m, BasicTransformerBlock):
+            embed_dim = 32 
+            processor = MatchAttnProcessor(
+                embed_dim=embed_dim,
+                hidden_size=m.attn1.to_q.out_features,
+            )
+            processor.requires_grad_(True)
+            m.attn1.processor = processor 
+
+def set_up_match_attn_processor(unet, fusion_blocks):
+    device, dtype = unet.conv_in.weight.device, unet.conv_in.weight.dtype
+    scale_idx=0
+    
+    if fusion_blocks == "full":
+        set_up_match_attn_processor_(unet.down_blocks)
+        set_up_match_attn_processor_(unet.mid_block)
+        set_up_match_attn_processor_(unet.up_blocks)
+    elif fusion_blocks == "midup":
+        set_up_match_attn_processor_(unet.mid_block)
+        set_up_match_attn_processor_(unet.up_blocks)
+    elif fusion_blocks == "down":
+        set_up_match_attn_processor_(unet.down_blocks)
+    elif fusion_blocks == "up":
+        set_up_match_attn_processor_(unet.up_blocks)
+    
+
 class Net(nn.Module):
     def __init__(
         self,
@@ -113,25 +187,25 @@ class Net(nn.Module):
 def log_validation(
     cfg,
     vae,
-    net,
+    reference_unet,
+    denoising_unet,
+    controlnext,
     scheduler,
+    matcher,
     width,
     height,
 ):
-    reference_unet = net.reference_unet
-    denoising_unet = net.denoising_unet
-    controlnext = net.controlnext
     generator = torch.Generator().manual_seed(42)
     # cast unet dtype
     vae = vae.to(dtype=torch.float32)
-    reference_unet.enable_xformers_memory_efficient_attention()
-    denoising_unet.enable_xformers_memory_efficient_attention()
+    
     pipe = Pose2ImagePipeline(
         vae=vae,
         reference_unet=reference_unet,
         denoising_unet=denoising_unet,
         controlnext=controlnext,
         scheduler=scheduler,
+        matcher=matcher,
     )
 
     pipe= pipe.to("cuda", dtype=torch.float32) 
@@ -139,6 +213,7 @@ def log_validation(
     pose_image_paths = cfg.validation.seg_paths
     pil_images = []
     val_json = cfg.validation.val_json
+    set_up_match_attn_processor(denoising_unet, fusion_blocks="full")
     for ref_image_path in ref_image_paths:
         for pose_image_path in pose_image_paths:
             pose_name = pose_image_path.split("/")[-1]#.replace(".png", "")
@@ -164,17 +239,17 @@ def log_validation(
             #     1.0,
             #     generator=generator,
             # ).images
-            os.makedirs(f"attn_vis2/{mode}/ref_{ref_name}", exist_ok=True)
-            save_name = f"attn_vis2/{mode}/ref_{ref_name}/tgt_{pose_name}"
+            os.makedirs(f"/mnt/data3/siyoon/attn_vis/1028_gs7.5/{mode}/ref_{ref_name}", exist_ok=True)
+            save_name = f"/mnt/data3/siyoon/attn_vis/1028_gs7.5/{mode}/ref_{ref_name}/tgt_{pose_name}"
             image = pipe(
-                prompt="A photo of a real driving scene",
+                prompt="A photo of a <sks> driving scene",
                 ref_image=ref_image_pil,
                 ref_seg_image=ref_seg_pil,
                 tgt_seg_image=pose_image_pil,
                 height=height,
                 width=width,
                 num_inference_steps=20,
-                guidance_scale=1.0,
+                guidance_scale=7.5,
                 generator=generator,
                 save_name=save_name,
                 mode=mode,
@@ -211,8 +286,27 @@ def log_validation(
 
     return pil_images
 
+def load_safetensors(model, safetensors_path, strict=True, load_weight_increasement=False):
+    if not load_weight_increasement:
+        if safetensors_path.endswith('.safetensors'):
+            state_dict = load_file(safetensors_path)
+        else:
+            state_dict = torch.load(safetensors_path)
+        # pretrained_state_dict = model.state_dict()
+        # # for k in state_dict.keys():
+        # #     pretrained_state_dict[k] = state_dict[k]
+        model.load_state_dict(state_dict, strict=strict)
+    else:
+        if safetensors_path.endswith('.safetensors'):
+            state_dict = load_file(safetensors_path)
+        else:
+            state_dict = torch.load(safetensors_path)
+        pretrained_state_dict = model.state_dict()
+        for k in state_dict.keys():
+            state_dict[k] = state_dict[k] + pretrained_state_dict[k]
+        model.load_state_dict(state_dict, strict=False)
+
 def load_models(cfg):
-    from train_matching import load_safetensors
     reference_unet = UNet2DConditionModel.from_pretrained(
         cfg.base_model_path,
         subfolder="unet",
@@ -229,30 +323,42 @@ def load_models(cfg):
     if cfg.net.controlnext_path is not None:
         load_safetensors(controlnext, cfg.net.controlnext_path, strict=True)
     
+    reference_unet.enable_xformers_memory_efficient_attention()
+    denoising_unet.enable_xformers_memory_efficient_attention()
     denoising_unet.to(device="cuda", dtype=weight_dtype) # dtype=weight_dtype)
+    if cfg.net.load_lora:
+        set_up_lora_attn_processor(reference_unet, fusion_blocks="midup")
+        lora_sd = torch.load(cfg.net.reference_unet_lora_path) 
+        key_mappings = {
+            'to_q_lora': 'to_q.lora_layer',
+            'to_v_lora': 'to_v.lora_layer',
+            'to_out_lora': 'to_out.lora_layer',
+            'to_k_lora' : 'to_k.lora_layer'
+        }
+
+        lora_sd = {key_mappings.get(k, k): v for k, v in lora_sd.items()}
+        
+        reference_unet.load_state_dict(
+            lora_sd, strict=False
+        )
+    if cfg.net.matcher_path is not None:
+        set_up_match_attn_processor(denoising_unet, fusion_blocks="midup")
+        matcher = OurModel()
+        matcher_ = torch.load(cfg.net.matcher_path)
+    # denoising_unet.load_state_dict(
+    #     torch.load("/mnt/data4/siyoon/i2i_control/bdd_1029/controlnext_final_checkpoint/train_semantic_lora_whole_frozen_dataaug_consistenttimesteps/matching_module_include64_lr1.0e-4_res512_bs1x1/stage1/denoising_unet-13200.pth")
+    # )
+    if cfg.net.trained_den:
+        den_sd = torch.load(cfg.net.denoising_unet_full_path)
+        set_up_match_attn_processor(denoising_unet, fusion_blocks="midup")
+        matcher = OurModel()
+        matcher_ = torch.load(cfg.net.matcher_path)
+        missing_keys, _ = denoising_unet.load_state_dict(
+            den_sd, strict=False
+        )
+        import pdb; pdb.set_trace()
     reference_unet.to(device="cuda",dtype=weight_dtype)
     controlnext.to(dtype=weight_dtype)
-    reference_control_writer = ReferenceAttentionControl(
-        reference_unet, 
-        do_classifier_free_guidance=False, 
-        mode="write",
-        fusion_blocks=cfg.mode.reference_region,
-    )
-    reference_control_reader = ReferenceAttentionControl(
-        denoising_unet, 
-        do_classifier_free_guidance=False, 
-        mode="read",
-        fusion_blocks=cfg.mode.reference_region,
-    )
-    
-
-    net = Net(
-        reference_unet, 
-        denoising_unet, 
-        controlnext,
-        reference_control_writer, 
-        reference_control_reader,
-    )
     # net = net.to(dtype=weight_dtype)
     sched_kwargs = OmegaConf.to_container(cfg.noise_scheduler_kwargs)
     # sched_kwargs.update(
@@ -262,8 +368,8 @@ def load_models(cfg):
     #     # prediction_type="v_prediction",
     # )
     sched_kwargs.update(
-        rescale_betas_zero_snr=True,
-        timestep_spacing="leading",
+        # rescale_betas_zero_snr=True,
+        # timestep_spacing="leading",
         # set_alpha_to_one=False,         
         # prediction_type="v_prediction",
     )
@@ -271,28 +377,59 @@ def load_models(cfg):
         "beta_schedule": "scaled_linear",
     })
     # val_noise_scheduler = DDIMScheduler(**sched_kwargs)
-    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs) 
+    val_noise_scheduler_config = {'num_train_timesteps': 1000, 
+                        'beta_start': 0.00085, 
+                        'beta_end': 0.012, 
+                        'beta_schedule': 'scaled_linear', 
+                        'trained_betas': None, 
+                        'solver_order': 2, 
+                        'prediction_type': 'epsilon', 
+                        'thresholding': False,
+                        'dynamic_thresholding_ratio': 0.995, 
+                        'sample_max_value': 1.0, 
+                        'predict_x0': True, 
+                        'solver_type': 'bh2', 
+                        'lower_order_final': True, 
+                        'disable_corrector': [], 
+                        'solver_p': None, 
+                        'use_karras_sigmas': False, 
+                        'use_exponential_sigmas': False, 
+                        'use_beta_sigmas': False, 
+                        'timestep_spacing': 'linspace', 
+                        'steps_offset': 1, 
+                        'final_sigmas_type': 'zero', 
+                        '_use_default_values': ['prediction_type', 'disable_corrector', 'use_beta_sigmas', 'solver_p', 'sample_max_value', 'use_exponential_sigmas', 'use_karras_sigmas', 'predict_x0', 'timestep_spacing', 'lower_order_final', 'thresholding', 'rescale_betas_zero_snr', 'dynamic_thresholding_ratio', 'solver_order', 'solver_type', 'final_sigmas_type'],
+                        'skip_prk_steps': True, 
+                        'set_alpha_to_one': False, 
+                        '_class_name': 'UniPCMultistepScheduler', 
+                        '_diffusers_version': '0.6.0', 
+                        'clip_sample': False}
+    val_noise_scheduler =  UniPCMultistepScheduler.from_config(val_noise_scheduler_config)
+    # val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs) 
     # import pdb; pdb.set_trace()
+    
     vae = AutoencoderKL.from_pretrained(
-        cfg.vae_model_path
+        cfg.vae_model_path, subfolder="vae"
     ).to("cuda", dtype=torch.float16)
 
-    adapter = OurModel() 
-    if cfg.net.adapter_path != "":
-        adapter_sd = torch.load()
-    return net, val_noise_scheduler, vae
+    
+    return reference_unet, denoising_unet, controlnext, val_noise_scheduler, matcher, vae
 
 def main(cfg):
-    net, scheduler, vae, adapter = load_models(config)  
-    net.denoising_unet.eval()
-    net.reference_unet.eval() 
-    net.controlnext.eval()
+    reference_unet, denoising_unet, controlnext, scheduler, matcher, vae = load_models(config)  
+    denoising_unet.eval()
+    reference_unet.eval() 
+    controlnext.eval()
     vae.eval()
+    matcher.eval()
     sample_dicts = log_validation(
         cfg=cfg,
         vae=vae, 
-        net=net, 
+        reference_unet=reference_unet,
+        denoising_unet=denoising_unet,
+        controlnext=controlnext,
         scheduler=scheduler,
+        matcher=matcher,
         width=cfg.data.val_width,
         height=cfg.data.val_height,
     )
@@ -305,9 +442,10 @@ def main(cfg):
             out_file =f"{cfg.output_dir}/{sample_name}.png"
 
             img.save(out_file)
+    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser() 
-    parser.add_argument("--config", type=str, default="./configs/inference/stage1_adap.yaml")
+    parser.add_argument("--config", type=str, default="./configs/inference/stage1_ours.yaml")
     parser.add_argument("--mode")
     args = parser.parse_args() 
     

@@ -1,6 +1,6 @@
 import inspect
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from tqdm import tqdm
+
 import numpy as np
 import PIL.Image
 import math
@@ -98,7 +98,7 @@ class StableDiffusionControlNeXtPipeline(
         denoising_unet: UNet2DConditionModel,
         controlnext: Union[ControlNeXtModel, List[ControlNeXtModel], Tuple[ControlNeXtModel]],
         scheduler: KarrasDiffusionSchedulers,
-        
+        matcher,
     ):
         super().__init__()
 
@@ -112,6 +112,7 @@ class StableDiffusionControlNeXtPipeline(
             denoising_unet=denoising_unet,
             controlnext=controlnext,
             scheduler=scheduler,
+            matcher=matcher,
         )
         self.vae_scale_factor = 2 ** (len(self.vae.config.block_out_channels) - 1)
         self.image_processor = VaeImageProcessor(vae_scale_factor=self.vae_scale_factor, do_convert_rgb=True)
@@ -679,120 +680,6 @@ class StableDiffusionControlNeXtPipeline(
         return self._num_timesteps
 
     @torch.no_grad()
-    def image2latent(self, image):
-        DEVICE=(
-            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        )
-        # if type(image) is Image:
-        #     image = np.array(image)
-        #     image = torch.from_numpy(image).float() / 127.5 - 1
-        #     image = image.permute(2,0,1).unsqueeze(0).to(DEVICE)
-        # latents = self.image_processor(image).latent_dist.mean
-        ref_image_tensor = self.ref_image_processor.preprocess(
-            image, height=512, width=512
-        )
-
-        # with torch.no_grad():
-        ref_image_tensor = ref_image_tensor.to(
-            dtype=self.vae.dtype, device=self.vae.device
-        )
-        latents = self.vae.encode(ref_image_tensor).latent_dist.sample() 
-        latents = latents * 0.18215 
-        return latents 
-   
-    def next_step(
-        self,
-        model_output: torch.FloatTensor,
-        timestep: int,
-        x: torch.FloatTensor,
-        eta=0.0,
-        verbose=False,
-    ):
-        """
-        Inverse sampling for DDIM Inversion
-        """
-        if verbose:
-            print("timestep: ", timestep)
-        next_step = timestep
-        timestep = min(
-            timestep
-            - self.scheduler.config.num_train_timesteps
-            // self.scheduler.num_inference_steps,
-            999,
-        )
-        alpha_prod_t = (
-            self.scheduler.alphas_cumprod[timestep]
-            if timestep >= 0
-            else self.scheduler.final_alpha_cumprod
-        )
-        alpha_prod_t_next = self.scheduler.alphas_cumprod[next_step]
-        beta_prod_t = 1 - alpha_prod_t
-        pred_x0 = (x - beta_prod_t**0.5 * model_output) / alpha_prod_t**0.5
-        pred_dir = (1 - alpha_prod_t_next) ** 0.5 * model_output
-        x_next = alpha_prod_t_next**0.5 * pred_x0 + pred_dir
-        return x_next, pred_x0
-        
-    @torch.no_grad()
-    def invert(self, image, prompt, num_inference_steps=20, guidance_scale=7.5, eta=0.0, return_intermediates=False):
-        DEVICE=(
-            torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-        )
-        batch_size = 1#image.shape[0]
-        if isinstance(prompt, list):
-            if batch_size == 1:
-                image = image.expand(len(prompt), -1, -1, -1)
-        elif isinstance(prompt, str):
-            if batch_size > 1 :
-                prompt = [prompt] * batch_size 
-        
-        text_input = self.tokenizer(
-            prompt, padding="max_length", max_length=77, return_tensors="pt"
-        )
-        text_embeddings = self.text_encoder(text_input.input_ids.to(DEVICE))[0]
-        latents = self.image2latent(image)
-        start_latents = latents 
-        
-        if guidance_scale > 1.0:
-            max_length = text_input.input_ids.shape[-1]
-            unconditional_input = self.tokenizer(
-                [""] * batch_size, 
-                padding="max_length",
-                max_length=77,
-                return_tensors="pt"
-            )
-            unconditional_embeddings = self.text_encoder(
-                unconditional_input.input_ids.to(DEVICE)
-            )[0]
-            text_embeddings = torch.cat(
-                [unconditional_embeddings, text_embeddings], dim=0
-            )
-        self.scheduler.set_timesteps(num_inference_steps) 
-        latents_list = [latents]
-        pred_x0_list = [latents]
-        for i, t in enumerate(
-            tqdm(reversed(self.scheduler.timesteps))
-        ):
-            if guidance_scale > 1.0:
-                model_inputs = torch.cat([latents] * 2)
-            else:
-                model_inputs = latents 
-            noise_pred= self.reference_unet(
-                model_inputs, t, encoder_hidden_states = text_embeddings 
-            )[0]
-            if guidance_scale > 1.0:
-                noise_pred_uncon, noise_pred_con = noise_pred.chunk(2, dim=0)
-                noise_pred = noise_pred_uncon + guidance_scale * (
-                    noise_pred_con - noise_pred_uncon
-                )
-            latents, pred_x0 = self.next_step(noise_pred, t, latents)
-            latents_list.append(latents)
-            pred_x0_list.append(latents)
-        
-        if return_intermediates:
-            return latents, latents_list 
-        
-        return latents, start_latents
-    @torch.no_grad()
     @replace_example_docstring(EXAMPLE_DOC_STRING)
     def __call__(
         self,
@@ -957,7 +844,7 @@ class StableDiffusionControlNeXtPipeline(
         else:
             batch_size = prompt_embeds.shape[0]
 
-        device = self._execution_device
+        device = self.denoising_unet.device #_execution_device
 
         # 3. Encode input prompt
         text_encoder_lora_scale = (
@@ -1022,17 +909,16 @@ class StableDiffusionControlNeXtPipeline(
 
         # 6. Prepare latent variables
         num_channels_latents = self.denoising_unet.config.in_channels
-        # latents = self.prepare_latents(
-        #     batch_size * num_images_per_prompt,
-        #     num_channels_latents,
-        #     height,
-        #     width,
-        #     prompt_embeds.dtype,
-        #     device,
-        #     generator,
-        #     latents,
-        # )
-        latents, latents_list = self.invert(ref_image, prompt , return_intermediates=True)
+        latents = self.prepare_latents(
+            batch_size * num_images_per_prompt,
+            num_channels_latents,
+            height,
+            width,
+            prompt_embeds.dtype,
+            device,
+            generator,
+            latents,
+        )
         batch_size=1
 
         if mode == "masactrl":
@@ -1051,7 +937,7 @@ class StableDiffusionControlNeXtPipeline(
                 batch_size=batch_size,
                 fusion_blocks="up"
             )
-        elif mode == "sa_aug":
+        elif mode == "sa_aug" or mode == "ours":
             from src.models.mutual_self_attention_sa_aug import ReferenceAttentionControl
             reference_control_writer = ReferenceAttentionControl(
                 self.reference_unet,
@@ -1086,12 +972,12 @@ class StableDiffusionControlNeXtPipeline(
             ref_image_latents = self.vae.encode(ref_image_tensor).latent_dist.sample()
             ref_image_latents = ref_image_latents * 0.18215
             
-        # ref_seg_image_resized =  F.interpolate(ref_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
-        # tgt_seg_image_resized =  F.interpolate(tgt_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
-        # seg_corr = (ref_seg_image_resized[:, :, :, :, None, None] == tgt_seg_image_resized[:,:, None,None, :,:]).all(dim=1)
-        # # refined_seg_corr = self.matcher(seg_corr.unsqueeze(1).float())
-        # # refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1],32*32, 32*32)
-        # seg_corr = rearrange(seg_corr, 'b hs ws ht wt -> b (hs ws) (ht wt)')
+        ref_seg_image_resized =  F.interpolate(ref_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
+        tgt_seg_image_resized =  F.interpolate(tgt_seg_image, size=(32, 32), mode="bilinear", align_corners=False)
+        seg_corr = (ref_seg_image_resized[:, :, :, :, None, None] == tgt_seg_image_resized[:,:, None,None, :,:]).all(dim=1)
+        # refined_seg_corr = self.matcher(seg_corr.unsqueeze(1).float())
+        # refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1],32*32, 32*32)
+        seg_corr = rearrange(seg_corr, 'b hs ws ht wt -> b (hs ws) (ht wt)')
         # # 6.5 Optionally get Guidance Scale Embedding
         timestep_cond = None
         if self.denoising_unet.config.time_cond_proj_dim is not None:
@@ -1112,7 +998,6 @@ class StableDiffusionControlNeXtPipeline(
         is_controlnext_compiled = is_compiled_module(self.controlnext)
         is_torch_higher_equal_2_1 = is_torch_version(">=", "2.1")
         init_latents = latents
-        ref_invert_latents, ref_latents_list = self.invert(ref_image, prompt, return_intermediates=True, num_inference_steps=20)
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
                 # Relevant thread:
@@ -1120,19 +1005,17 @@ class StableDiffusionControlNeXtPipeline(
                 if (is_unet_compiled and is_controlnext_compiled) and is_torch_higher_equal_2_1:
                     torch._inductor.cudagraph_mark_step_begin()
 
-                if mode =="sa_aug" :
+                if mode =="sa_aug" or mode == "ours":
                     ref_controlnext_output = self.controlnext(
                         ref_seg_image.float(),
                         t
                     )
-                    # ref_invert_latents = ref_latents_list[-1 -i]
-                    # ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents 
-                    # ref_model_input = self.scheduler.scale_model_input(ref_model_input,t )
+
                     noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
                     ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
                     ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
 
-                    ref_noise_pred = self.reference_unet(
+                    ref_pred = self.reference_unet(
                         # ref_model_input.repeat(
                         #     (2 if self.do_classifier_free_guidance else 1), 1, 1, 1
                         # ),
@@ -1143,26 +1026,19 @@ class StableDiffusionControlNeXtPipeline(
                         conditional_controls=ref_controlnext_output,
                         return_dict=False
                     )[0]
-                    if self.do_classifier_free_guidance:
-                        ref_noise_pred_uncond, ref_noise_pred_text = ref_noise_pred.chunk(2)
-                        ref_noise_pred = ref_noise_pred_uncond + self.guidance_scale * (ref_noise_pred_text - ref_noise_pred_uncond)
-
+                    
                     reference_control_reader.update(reference_control_writer)
-                    ref_invert_latents = self.scheduler.step(ref_noise_pred, t, ref_invert_latents, **extra_step_kwargs, return_dict=False)[0]
 
                 elif mode == "masactrl" and i > 4:
                     ref_controlnext_output = self.controlnext(
                         ref_seg_image.float(),
                         t
                     )
-                    ref_invert_latents = ref_latents_list[-1 -i]
-                    # noisy_ref_latents = self.scheduler.add_noise(ref_invert_latents, init_latents, t.unsqueeze(0).long())
-                    # ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else noisy_ref_latents 
-                    # ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
-                    ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents
-                    # ref_model_input = ref_invert_latents
+
+                    noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
+                    ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
                     ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
-                    ref_noise_pred = self.reference_unet(
+                    ref_pred = self.reference_unet(
                         # ref_model_input.repeat(
                         #     (2 if self.do_classifier_free_guidance else 1), 1, 1, 1
                         # ),
@@ -1172,16 +1048,14 @@ class StableDiffusionControlNeXtPipeline(
                         conditional_controls=ref_controlnext_output,
                         return_dict=False
                     )[0]
-                    # import pdb; pdb.set_trace()
-                    # if self.do_classifier_free_guidance:
-                    #     ref_noise_pred_uncond, ref_noise_pred_text = ref_noise_pred.chunk(2)
-                    #     ref_noise_pred = ref_noise_pred_uncond + self.guidance_scale * (ref_noise_pred_text - ref_noise_pred_uncond)
-
-                    # if i > 4:
+                    
                     reference_control_reader.update(reference_control_writer)
-                    ref_invert_latents = self.scheduler.step(ref_noise_pred, t, ref_invert_latents, **extra_step_kwargs, return_dict=False)[0]
-
-                # latents = latents_list[-1-i]
+                # if mode == "ours":
+                for n, p in self.denoising_unet.attn_processors.items():
+                    if "attn1." in n and p is not None:
+                        p.matcher = self.matcher
+                        p.seg_corr = seg_corr
+                        p.hard_corr = True
                 # expand the latents if we are doing classifier free guidance
                 latent_model_input = torch.cat([latents] * 2) if self.do_classifier_free_guidance else latents
                 latent_model_input = self.scheduler.scale_model_input(latent_model_input, t)
@@ -1202,7 +1076,7 @@ class StableDiffusionControlNeXtPipeline(
                     added_cond_kwargs=added_cond_kwargs,
                     return_dict=False,
                 )[0]
-                # print("attention visualization")
+
                 # attn_maps = [n for n in self.denoising_unet.attn_processors.items() if 'attn1' in n[0]]
                 # for name, attn_procs in (attn_maps):
                 #     attn_map = attn_procs.attn_map 
@@ -1228,7 +1102,6 @@ class StableDiffusionControlNeXtPipeline(
                 #             mode=mode,
                 #         )
                 #     elif mode =="sa_aug":
-                #         print(f"attention visualization, {save_proc_name}")
                 #         attn_size = attn_map.shape[-1] 
                 #         if attn_map.shape[-2] * 2 ==attn_map.shape[-1]:
                 #             src_attn_map = attn_map[:, :, :attn_size//2]

@@ -1,0 +1,66 @@
+base_model_path: "/mnt/data4/siyoon/stable-diffusion-v1-5" #"/home/cvlab15/project/siyoon/i2i_control/checkpoints/sd-image-variations-diffusers" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-image-variations-diffusers'
+vae_model_path: "/mnt/data4/siyoon/stable-diffusion-v1-5/vae" #"stabilityai/sd-vae-ft-mse" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-vae-ft-mse'
+# vae_model_path: "stabilityai/sd-vae-ft-mse"
+pretrained_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+
+net:
+  reference_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+  denoising_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+  controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/controlnext.bin" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+# pretrained_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model_1.safetensors" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+
+# net:
+#   reference_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model_1.safetensors" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+#   denoising_unet_path : "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model_1.safetensors" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+#   controlnext_path: "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/model.safetensors" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+
+noise_scheduler_kwargs:
+  num_train_timesteps: 1000
+  beta_start:          0.00085
+  beta_end:            0.012
+  beta_schedule:       "scaled_linear"
+  steps_offset:        1
+  # clip_sample:         false
+
+data:
+  val_width: 512 
+  val_height: 512
+
+validation:
+  real_paths:
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/8f737bfa-756ddb33.jpg
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/808ff399-79b2c310.jpg
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/99ebed9d-b6dd1203.jpg
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/a02501c6-e1ed5f44.jpg
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/9a60b3e7-789f9b00.jpg
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/images/10k/val/ff55861e-a06b953c.jpg
+
+
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7d97d173-09388af3.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7daa6479-67988f3f.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7df23ae0-00000000.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7ef50949-51640000.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/val/7f0b6105-00000000.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac6e638d-7c84846d.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac9be3fe-790d1f8e.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/ac56c836-bdabca21.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/afdc295b-5efbee33.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b4d9d4e7-00000000.jpg"
+    # - "/mnt/data4/siyoon/bdd100k/bdd100k/images/10k/test/b666b95d-ec6681ac.jpg"
+  seg_paths:
+    - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7d209219-ccdc1a09.png
+    - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7dc08598-f42e2015.png
+    - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7f3656b9-ef39e56d.png
+    - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/9c94f476-8107ee6b.png
+    - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/7e5ef657-a9ad0001.png
+    - /mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/8dd5f9b7-00000000.png
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/8f737bfa-756ddb33.png
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/808ff399-79b2c310.png
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/99ebed9d-b6dd1203.png
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/a02501c6-e1ed5f44.png
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/labels/10k/sem_seg/colormaps/val/9a60b3e7-789f9b00.png
+    - /mnt/data4/jeeyoung/bdd100k/bdd100k/labels/10k/sem_seg/colormaps//val/ff55861e-a06b953c.png
+  
+  val_json: "/mnt/data4/siyoon/bdd100k/bdd100k/labels/10k/sem_seg/customized_sem_seg_val.json"
+
+output_dir: "1025/inference_results_sa_aug_21000"

@@ -32,7 +32,9 @@ from src.models.mutual_self_attention import ReferenceAttentionControl
 from einops import rearrange
 from utils.visualize_hacked_attention import visualize_hacked_attention
 logger = logging.get_logger(__name__)  # pylint: disable=invalid-name
-
+from src.utils.util import (delete_additional_ckpt, import_filename,
+                            seed_everything)
+seed_everything(42)
 
 EXAMPLE_DOC_STRING = """
 
@@ -974,12 +976,24 @@ class StableDiffusionControlNeXtPipeline(
             lora_scale=text_encoder_lora_scale,
             clip_skip=self.clip_skip,
         )
+
+        ref_prompt_embeds, ref_negative_prompt_embeds = self.encode_prompt(
+            "",
+            device,
+            num_images_per_prompt,
+            self.do_classifier_free_guidance,
+            negative_prompt,
+            prompt_embeds=prompt_embeds,
+            negative_prompt_embeds=negative_prompt_embeds,
+            lora_scale=text_encoder_lora_scale,
+            clip_skip=self.clip_skip,
+        )
         # For classifier free guidance, we need to do two forward passes.
         # Here we concatenate the unconditional and text embeddings into a single batch
         # to avoid doing two forward passes
         if self.do_classifier_free_guidance:
             prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds])
-
+            ref_prompt_embeds = torch.cat([ref_negative_prompt_embeds, ref_prompt_embeds])
         if ip_adapter_image is not None:
             output_hidden_state = False if isinstance(self.denoising_unet.encoder_hid_proj, ImageProjection) else True
             image_embeds, negative_image_embeds = self.encode_image(
@@ -1022,17 +1036,17 @@ class StableDiffusionControlNeXtPipeline(
 
         # 6. Prepare latent variables
         num_channels_latents = self.denoising_unet.config.in_channels
-        # latents = self.prepare_latents(
-        #     batch_size * num_images_per_prompt,
-        #     num_channels_latents,
-        #     height,
-        #     width,
-        #     prompt_embeds.dtype,
-        #     device,
-        #     generator,
-        #     latents,
-        # )
-        latents, latents_list = self.invert(ref_image, prompt , return_intermediates=True)
+        latents = self.prepare_latents(
+            batch_size * num_images_per_prompt,
+            num_channels_latents,
+            height,
+            width,
+            prompt_embeds.dtype,
+            device,
+            generator,
+            latents,
+        )
+        latents, latents_list = self.invert(ref_image, "" , return_intermediates=True)
         batch_size=1
 
         if mode == "masactrl":
@@ -1112,7 +1126,10 @@ class StableDiffusionControlNeXtPipeline(
         is_controlnext_compiled = is_compiled_module(self.controlnext)
         is_torch_higher_equal_2_1 = is_torch_version(">=", "2.1")
         init_latents = latents
-        ref_invert_latents, ref_latents_list = self.invert(ref_image, prompt, return_intermediates=True, num_inference_steps=20)
+        ref_invert_latents, ref_latents_list = self.invert(ref_image, "", return_intermediates=True)
+        
+        reference_control_reader.clear()
+        reference_control_writer.clear()
         with self.progress_bar(total=num_inference_steps) as progress_bar:
             for i, t in enumerate(timesteps):
                 # Relevant thread:
@@ -1125,21 +1142,17 @@ class StableDiffusionControlNeXtPipeline(
                         ref_seg_image.float(),
                         t
                     )
-                    # ref_invert_latents = ref_latents_list[-1 -i]
-                    # ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents 
-                    # ref_model_input = self.scheduler.scale_model_input(ref_model_input,t )
-                    noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
-                    ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
+
+                    ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents
                     ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
+                    # noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
+                    # ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
+                    # ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
 
                     ref_noise_pred = self.reference_unet(
-                        # ref_model_input.repeat(
-                        #     (2 if self.do_classifier_free_guidance else 1), 1, 1, 1
-                        # ),
-                        # t,
                         ref_model_input,
                         t,
-                        encoder_hidden_states=prompt_embeds,
+                        encoder_hidden_states=ref_prompt_embeds,
                         conditional_controls=ref_controlnext_output,
                         return_dict=False
                     )[0]
@@ -1151,16 +1164,16 @@ class StableDiffusionControlNeXtPipeline(
                     ref_invert_latents = self.scheduler.step(ref_noise_pred, t, ref_invert_latents, **extra_step_kwargs, return_dict=False)[0]
 
                 elif mode == "masactrl" and i > 4:
+                   
                     ref_controlnext_output = self.controlnext(
                         ref_seg_image.float(),
                         t
                     )
-                    ref_invert_latents = ref_latents_list[-1 -i]
+                    # ref_invert_latents = ref_latents_list[-1 -i]
                     # noisy_ref_latents = self.scheduler.add_noise(ref_invert_latents, init_latents, t.unsqueeze(0).long())
                     # ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else noisy_ref_latents 
                     # ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
                     ref_model_input = torch.cat([ref_invert_latents] * 2) if self.do_classifier_free_guidance else ref_invert_latents
-                    # ref_model_input = ref_invert_latents
                     ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
                     ref_noise_pred = self.reference_unet(
                         # ref_model_input.repeat(
@@ -1168,14 +1181,14 @@ class StableDiffusionControlNeXtPipeline(
                         # ),
                         ref_model_input,
                         t,
-                        encoder_hidden_states=prompt_embeds,
+                        encoder_hidden_states=ref_prompt_embeds,
                         conditional_controls=ref_controlnext_output,
                         return_dict=False
                     )[0]
                     # import pdb; pdb.set_trace()
-                    # if self.do_classifier_free_guidance:
-                    #     ref_noise_pred_uncond, ref_noise_pred_text = ref_noise_pred.chunk(2)
-                    #     ref_noise_pred = ref_noise_pred_uncond + self.guidance_scale * (ref_noise_pred_text - ref_noise_pred_uncond)
+                    if self.do_classifier_free_guidance:
+                        ref_noise_pred_uncond, ref_noise_pred_text = ref_noise_pred.chunk(2)
+                        ref_noise_pred = ref_noise_pred_uncond + self.guidance_scale * (ref_noise_pred_text - ref_noise_pred_uncond)
 
                     # if i > 4:
                     reference_control_reader.update(reference_control_writer)

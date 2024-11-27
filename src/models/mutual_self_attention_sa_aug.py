@@ -6,7 +6,7 @@ from einops import rearrange
 
 from .attention import BasicTransformerBlock
 import torch.nn.functional as F
-
+import copy
 # from diffusers.models.attention import BasicTransformerBlock, Attention
 # from src.utils.viz import save_in_colormap
 def torch_dfs(model: torch.nn.Module):
@@ -64,7 +64,7 @@ class ReferenceAttentionControl:
         # 10. Modify self attention and group norm
         self.unet = unet
         assert mode in ["read", "write"]
-        assert fusion_blocks in ["midup", "full", "up"]
+        assert fusion_blocks in ["midup", "full", "up", "second_full"]
         self.reference_attn = reference_attn
         self.reference_adain = reference_adain
         self.fusion_blocks = fusion_blocks
@@ -182,9 +182,9 @@ class ReferenceAttentionControl:
                     if len(bank_fea) == 0:
                         modify_norm_hidden_states = norm_hidden_states
                     else:
-                        # import pdb; pdb.set_trace()
-
-                        modify_norm_hidden_states = bank_fea[0] # masactrl-like
+                        modify_norm_hidden_states = torch.cat(
+                            [norm_hidden_states] + bank_fea, dim=1
+                        ) # masactrl-like
                     # else :
                     out = self.attn1(
                         norm_hidden_states,
@@ -200,10 +200,9 @@ class ReferenceAttentionControl:
                         out
                         + hidden_states
                     )
+                    
                     if do_classifier_free_guidance:
-                        import copy
                         conditional_attn = copy.deepcopy(self.attn1)
-
                         hidden_states_c = hidden_states_uc.clone()
                         _uc_mask = uc_mask.clone()
                         if hidden_states.shape[0] != _uc_mask.shape[0]:
@@ -216,7 +215,7 @@ class ReferenceAttentionControl:
                                 .bool()
                             )
                         hidden_states_c[_uc_mask] = (
-                           conditional_attn(
+                            conditional_attn(
                                 norm_hidden_states[_uc_mask],
                                 encoder_hidden_states=norm_hidden_states[_uc_mask],
                                 attention_mask=attention_mask,
@@ -226,7 +225,6 @@ class ReferenceAttentionControl:
                         hidden_states = hidden_states_c.clone()
                     else:
                         hidden_states = hidden_states_uc
-
                     # self.bank.clear()
                     if self.attn2 is not None:
                         # Cross-Attention
@@ -300,6 +298,14 @@ class ReferenceAttentionControl:
                     module
                     for module in torch_dfs(self.unet)
                     if isinstance(module, BasicTransformerBlock)
+                ]
+            elif self.fusion_blocks == "second_full":
+                attn_modules = [
+                    module
+                    for module in (
+                        torch_dfs(self.unet)
+                    )
+                    if isinstance(module, BasicTransformerBlock) 
                 ]
             elif self.fusion_blocks == "up":
                 attn_modules = [

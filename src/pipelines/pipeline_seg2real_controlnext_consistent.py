@@ -101,8 +101,8 @@ class StableDiffusionControlNeXtPipeline(
         super().__init__()
 
     
-        self.tokenizer = CLIPTokenizer.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="tokenizer")
-        self.text_encoder = CLIPTextModel.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="text_encoder").to(device="cuda")
+        self.tokenizer = CLIPTokenizer.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5", subfolder="tokenizer")
+        self.text_encoder = CLIPTextModel.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5", subfolder="text_encoder").to(device="cuda")
         
         self.register_modules(
             vae=vae,
@@ -848,48 +848,20 @@ class StableDiffusionControlNeXtPipeline(
             self.cross_attention_kwargs.get("scale", None) if self.cross_attention_kwargs is not None else None
         )
 
-        ref_object_names = []
-        tgt_object_names = []
-        if val_json is not None:
-            with open(val_json, "r") as f:
-                val_inst_data = json.load(f)
-                ref_object_names = val_inst_data[ref_name.replace(".jpg", ".png")]
-                tgt_object_names = val_inst_data[tgt_name.replace(".jpg", ".png")]
+        # ref_object_names = []
+        # tgt_object_names = []
+        # if val_json is not None:
+        #     with open(val_json, "r") as f:
+        #         val_inst_data = json.load(f)
+        #         ref_object_names = val_inst_data[ref_name.replace(".jpg", ".png")]
+        #         tgt_object_names = val_inst_data[tgt_name.replace(".jpg", ".png")]
             
-        ref_instance_prompt = prompt 
-        for object in ref_object_names : 
-            ref_instance_prompt += f" {object},"
+        # ref_instance_prompt = prompt 
+        # for object in ref_object_names : 
+        #     ref_instance_prompt += f" {object},"
         
-        ref_prompt_embeds, ref_negative_prompt_embeds = self.encode_prompt(
-            ref_instance_prompt,
-            device,
-            num_images_per_prompt,
-            self.do_classifier_free_guidance,
-            negative_prompt,
-            prompt_embeds=prompt_embeds,
-            negative_prompt_embeds=negative_prompt_embeds,
-            lora_scale=text_encoder_lora_scale,
-            clip_skip=self.clip_skip,
-        )
-
-        tgt_instance_prompt = prompt 
-        for object in tgt_object_names:
-            tgt_instance_prompt += f" {object},"
-
-        tgt_prompt_embeds, tgt_negative_prompt_embeds = self.encode_prompt(
-            tgt_instance_prompt,
-            device,
-            num_images_per_prompt,
-            self.do_classifier_free_guidance,
-            negative_prompt,
-            prompt_embeds=prompt_embeds,
-            negative_prompt_embeds=negative_prompt_embeds,
-            lora_scale=text_encoder_lora_scale,
-            clip_skip=self.clip_skip,
-        )
-        
-        # prompt_embeds, negative_prompt_embeds = self.encode_prompt(
-        #     prompt,
+        # ref_prompt_embeds, ref_negative_prompt_embeds = self.encode_prompt(
+        #     ref_instance_prompt,
         #     device,
         #     num_images_per_prompt,
         #     self.do_classifier_free_guidance,
@@ -900,11 +872,39 @@ class StableDiffusionControlNeXtPipeline(
         #     clip_skip=self.clip_skip,
         # )
 
+        # tgt_instance_prompt = prompt 
+        # for object in tgt_object_names:
+        #     tgt_instance_prompt += f" {object},"
+
+        # tgt_prompt_embeds, tgt_negative_prompt_embeds = self.encode_prompt(
+        #     tgt_instance_prompt,
+        #     device,
+        #     num_images_per_prompt,
+        #     self.do_classifier_free_guidance,
+        #     negative_prompt,
+        #     prompt_embeds=prompt_embeds,
+        #     negative_prompt_embeds=negative_prompt_embeds,
+        #     lora_scale=text_encoder_lora_scale,
+        #     clip_skip=self.clip_skip,
+        # )
+        
+        prompt_embeds, negative_prompt_embeds = self.encode_prompt(
+            prompt,
+            device,
+            num_images_per_prompt,
+            self.do_classifier_free_guidance,
+            negative_prompt,
+            prompt_embeds=prompt_embeds,
+            negative_prompt_embeds=negative_prompt_embeds,
+            lora_scale=text_encoder_lora_scale,
+            clip_skip=self.clip_skip,
+        )
+
         # For classifier free guidance, we need to do two forward passes.
         # Here we concatenate the unconditional and text embeddings into a single batch
         # to avoid doing two forward passes
-        # if self.do_classifier_free_guidance:
-        #     prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds])
+        if self.do_classifier_free_guidance:
+            prompt_embeds = torch.cat([negative_prompt_embeds, prompt_embeds])
 
         # if ip_adapter_image is not None:
         #     output_hidden_state = False if isinstance(self.denoising_unet.encoder_hid_proj, ImageProjection) else True
@@ -1023,16 +1023,14 @@ class StableDiffusionControlNeXtPipeline(
 
                 # add
                 noisy_ref_latents = self.scheduler.add_noise(ref_image_latents, init_latents, t.unsqueeze(0).long())
-                ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else noisy_ref_latents
+                ref_model_input = torch.cat([noisy_ref_latents] * 2) if self.do_classifier_free_guidance else ref_image_latents 
                 ref_model_input = self.scheduler.scale_model_input(ref_model_input, t)
 
                 
                 ref_pred = self.reference_unet(
-                    ref_image_latents.repeat(
-                        (2 if self.do_classifier_free_guidance else 1), 1, 1, 1
-                    ),
+                    ref_model_input,
                     t,
-                    encoder_hidden_states=ref_prompt_embeds,
+                    encoder_hidden_states=prompt_embeds, #ref_prompt_embeds,
                     conditional_controls=ref_controlnext_output,
                     return_dict=False
                 )[0]
@@ -1061,7 +1059,7 @@ class StableDiffusionControlNeXtPipeline(
                 noise_pred = self.denoising_unet(
                     latent_model_input,
                     t,
-                    encoder_hidden_states=tgt_prompt_embeds,
+                    encoder_hidden_states=prompt_embeds, #tgt_prompt_embeds,
                     timestep_cond=timestep_cond,
                     cross_attention_kwargs=self.cross_attention_kwargs,
                     conditional_controls=controlnext_output, #mid_block_res_sample,

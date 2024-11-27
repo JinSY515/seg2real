@@ -14,7 +14,6 @@ train_mode:
   train_matching_module: True
   train_semantic : False
   train_denoising : False
-  train_denoising_sa : False
   aug_mode : True
   consistent_timesteps: True 
   recon_reference : False
@@ -57,8 +56,8 @@ noise_scheduler_kwargs:
 
 base_model_path: "stable-diffusion-v1-5/stable-diffusion-v1-5" #"/home/cvlab15/project/siyoon/i2i_control/checkpoints/sd-image-variations-diffusers" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-image-variations-diffusers'
 vae_model_path: "stable-diffusion-v1-5/stable-diffusion-v1-5" #"stabilityai/sd-vae-ft-mse" #"runwayml/stable-diffusion-v1-5" #'./pretrained_weights/sd-vae-ft-mse'
-controlnext_path: "/mnt/data4/siyoon/reversed_checkpoits/model.safetensors" #"/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/controlnext.bin" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
-pretrained_unet_path : "/mnt/data4/siyoon/reversed_checkpoits/model_1.safetensors" #"/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model_1.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
+controlnext_path: "/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/controlnext.bin" #model.safetensors" #'./pretrained_weights/control_v11p_sd15_openpose/diffusion_pytorch_model.bin'
+pretrained_unet_path : "/mnt/data4/siyoon/controlnext_checkpoints/checkpoint-34400+17600+2400/model_1.safetensors" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-21000/unet_weight_increasements.bin" # "/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07_02/best/checkpoint-8400/unet_weight_increasements.bin" #"/mnt/data4/jeeyoung/checkpoints/controlnext_SD1.5_batch_size_16_10_07/checkpoint-4200/model_1.safetensors" #model_1.safetensors"
 controlnext_scale : 1.0
 pretrained_matching_module_path: None 
 
@@ -74,7 +73,7 @@ resume_from_checkpoint: "" #'/home/cvlab01/project/siyoon/Moore-AnimateAnyone/re
 checkpointing_steps: 1000
 save_model_epoch_interval: 1 
 exp_name: 'stage1'
-output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1115/controlnext_reversed/train_kv/dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head_split_adapter_after_down0_cost_plusminus'
+output_dir: '/mnt/data4/siyoon/i2i_control/bdd_1107/controlnext_final_checkpoint52400/train_matcheronly_deepmatch/dataaug_consistenttimesteps/lr1.0e-5_res512_bs1x1/multi_head_timestep-aware'
 
 validation:
   real_paths:

@@ -40,19 +40,20 @@ from tqdm.auto import tqdm
 from transformers import (CLIPTextModel, CLIPTextModelWithProjection,
                           CLIPTokenizer, CLIPVisionModelWithProjection)
 from src.models.controlnext import ControlNeXtModel
-from src.models.matching_module import OurModel
-mode = "controlnext"
+from safetensors.torch import load_file
+mode = "sa_aug"
     
 if mode == "controlnext":
     from src.models.mutual_self_attention import ReferenceAttentionControl
     # from src.pipelines.pipeline_controlnext import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
-    from src.pipelines.pipeline_seg2real_controlnext_abl import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline 
+    from src.pipelines.pipeline_seg2real_controlnext_abl_inv import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline 
 elif mode == "masactrl":
     from src.models.mutual_self_attention_masactrl import ReferenceAttentionControl 
-    from src.pipelines.pipeline_seg2real_controlnext_abl import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline 
+    from src.pipelines.pipeline_seg2real_controlnext_abl_inv import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline 
 elif mode == "sa_aug":
     from src.models.mutual_self_attention import ReferenceAttentionControl
-    from src.pipelines.pipeline_seg2real_controlnext_abl import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
+    from src.pipelines.pipeline_seg2real_controlnext_abl_inv import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
+
 class Net(nn.Module):
     def __init__(
         self,
@@ -113,19 +114,19 @@ class Net(nn.Module):
 def log_validation(
     cfg,
     vae,
-    net,
+    reference_unet,
+    denoising_unet,
+    controlnext,
     scheduler,
     width,
     height,
 ):
-    reference_unet = net.reference_unet
-    denoising_unet = net.denoising_unet
-    controlnext = net.controlnext
     generator = torch.Generator().manual_seed(42)
     # cast unet dtype
     vae = vae.to(dtype=torch.float32)
     reference_unet.enable_xformers_memory_efficient_attention()
     denoising_unet.enable_xformers_memory_efficient_attention()
+    controlnext.enable_xformers_memory_efficient_attention()
     pipe = Pose2ImagePipeline(
         vae=vae,
         reference_unet=reference_unet,
@@ -164,17 +165,17 @@ def log_validation(
             #     1.0,
             #     generator=generator,
             # ).images
-            os.makedirs(f"attn_vis2/{mode}/ref_{ref_name}", exist_ok=True)
-            save_name = f"attn_vis2/{mode}/ref_{ref_name}/tgt_{pose_name}"
+            os.makedirs(f"/mnt/data3/siyoon/attn_vis/1031_gs7.5/{mode}/ref_{ref_name}", exist_ok=True)
+            save_name = f"/mnt/data3/siyoon/attn_vis/1031_gs7.5/{mode}/ref_{ref_name}/tgt_{pose_name}"
             image = pipe(
-                prompt="A photo of a real driving scene",
+                prompt="A photo of <sks> driving scene",
                 ref_image=ref_image_pil,
                 ref_seg_image=ref_seg_pil,
                 tgt_seg_image=pose_image_pil,
                 height=height,
                 width=width,
                 num_inference_steps=20,
-                guidance_scale=1.0,
+                guidance_scale=7.5,
                 generator=generator,
                 save_name=save_name,
                 mode=mode,
@@ -211,8 +212,27 @@ def log_validation(
 
     return pil_images
 
+def load_safetensors(model, safetensors_path, strict=True, load_weight_increasement=False):
+    if not load_weight_increasement:
+        if safetensors_path.endswith('.safetensors'):
+            state_dict = load_file(safetensors_path)
+        else:
+            state_dict = torch.load(safetensors_path)
+        # pretrained_state_dict = model.state_dict()
+        # # for k in state_dict.keys():
+        # #     pretrained_state_dict[k] = state_dict[k]
+        model.load_state_dict(state_dict, strict=strict)
+    else:
+        if safetensors_path.endswith('.safetensors'):
+            state_dict = load_file(safetensors_path)
+        else:
+            state_dict = torch.load(safetensors_path)
+        pretrained_state_dict = model.state_dict()
+        for k in state_dict.keys():
+            state_dict[k] = state_dict[k] + pretrained_state_dict[k]
+        model.load_state_dict(state_dict, strict=False)
+
 def load_models(cfg):
-    from train_matching import load_safetensors
     reference_unet = UNet2DConditionModel.from_pretrained(
         cfg.base_model_path,
         subfolder="unet",
@@ -224,35 +244,14 @@ def load_models(cfg):
     weight_dtype=torch.float32
     controlnext = ControlNeXtModel(controlnext_scale=1.0)
     if cfg.pretrained_unet_path is not None:
-        load_safetensors(reference_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=False)
-        load_safetensors(denoising_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=False)
+        load_safetensors(reference_unet, cfg.net.reference_unet_path, strict=True, load_weight_increasement=False)
+        load_safetensors(denoising_unet, cfg.net.denoising_unet_path, strict=True, load_weight_increasement=False)
     if cfg.net.controlnext_path is not None:
         load_safetensors(controlnext, cfg.net.controlnext_path, strict=True)
     
     denoising_unet.to(device="cuda", dtype=weight_dtype) # dtype=weight_dtype)
     reference_unet.to(device="cuda",dtype=weight_dtype)
     controlnext.to(dtype=weight_dtype)
-    reference_control_writer = ReferenceAttentionControl(
-        reference_unet, 
-        do_classifier_free_guidance=False, 
-        mode="write",
-        fusion_blocks=cfg.mode.reference_region,
-    )
-    reference_control_reader = ReferenceAttentionControl(
-        denoising_unet, 
-        do_classifier_free_guidance=False, 
-        mode="read",
-        fusion_blocks=cfg.mode.reference_region,
-    )
-    
-
-    net = Net(
-        reference_unet, 
-        denoising_unet, 
-        controlnext,
-        reference_control_writer, 
-        reference_control_reader,
-    )
     # net = net.to(dtype=weight_dtype)
     sched_kwargs = OmegaConf.to_container(cfg.noise_scheduler_kwargs)
     # sched_kwargs.update(
@@ -261,53 +260,82 @@ def load_models(cfg):
     #     # set_alpha_to_one=False,         
     #     # prediction_type="v_prediction",
     # )
-    sched_kwargs.update(
-        rescale_betas_zero_snr=True,
-        timestep_spacing="leading",
-        # set_alpha_to_one=False,         
-        # prediction_type="v_prediction",
-    )
-    sched_kwargs.update({
-        "beta_schedule": "scaled_linear",
-    })
-    # val_noise_scheduler = DDIMScheduler(**sched_kwargs)
-    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs) 
+    # sched_kwargs.update(
+    #     clip_sample=True,
+    #     rescale_betas_zero_snr=True,
+    #     # timestep_spacing="leading",
+    #     # set_alpha_to_one=False,         
+    #     # prediction_type="v_prediction",
+    # )
+    # sched_kwargs.update({
+    #     "beta_schedule": "scaled_linear",
+    # })
+    val_noise_scheduler = DDIMScheduler(**sched_kwargs)
+    # val_noise_scheduler_config = {'num_train_timesteps': 1000, 
+    #                     'beta_start': 0.00085, 
+    #                     'beta_end': 0.012, 
+    #                     'beta_schedule': 'scaled_linear', 
+    #                     'trained_betas': None, 
+    #                     'solver_order': 2, 
+    #                     'prediction_type': 'epsilon', 
+    #                     'thresholding': False,
+    #                     'dynamic_thresholding_ratio': 0.995, 
+    #                     'sample_max_value': 1.0, 
+    #                     'predict_x0': True, 
+    #                     'solver_type': 'bh2', 
+    #                     'lower_order_final': True, 
+    #                     'disable_corrector': [], 
+    #                     'solver_p': None, 
+    #                     'use_karras_sigmas': False, 
+    #                     'use_exponential_sigmas': False, 
+    #                     'use_beta_sigmas': False, 
+    #                     'timestep_spacing': 'linspace', 
+    #                     'steps_offset': 1, 
+    #                     'final_sigmas_type': 'zero', 
+    #                     '_use_default_values': ['prediction_type', 'disable_corrector', 'use_beta_sigmas', 'solver_p', 'sample_max_value', 'use_exponential_sigmas', 'use_karras_sigmas', 'predict_x0', 'timestep_spacing', 'lower_order_final', 'thresholding', 'rescale_betas_zero_snr', 'dynamic_thresholding_ratio', 'solver_order', 'solver_type', 'final_sigmas_type'],
+    #                     'skip_prk_steps': True, 
+    #                     'set_alpha_to_one': False, 
+    #                     '_class_name': 'UniPCMultistepScheduler', 
+    #                     '_diffusers_version': '0.6.0', 
+    #                     'clip_sample': False}
+    # val_noise_scheduler =  UniPCMultistepScheduler.from_config(val_noise_scheduler_config)
+    # val_noise_scheduler =  DDIMScheduler.from_config(val_noise_scheduler_config)
+    # val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs) 
     # import pdb; pdb.set_trace()
     vae = AutoencoderKL.from_pretrained(
-        cfg.vae_model_path
+        cfg.vae_model_path, subfolder="vae"
     ).to("cuda", dtype=torch.float16)
 
-    adapter = OurModel() 
-    if cfg.net.adapter_path != "":
-        adapter_sd = torch.load()
-    return net, val_noise_scheduler, vae
+    return reference_unet, denoising_unet, controlnext, val_noise_scheduler, vae
 
 def main(cfg):
-    net, scheduler, vae, adapter = load_models(config)  
-    net.denoising_unet.eval()
-    net.reference_unet.eval() 
-    net.controlnext.eval()
+    reference_unet, denoising_unet, controlnext, scheduler, vae = load_models(config)  
+    denoising_unet.eval()
+    reference_unet.eval() 
+    controlnext.eval()
     vae.eval()
     sample_dicts = log_validation(
         cfg=cfg,
         vae=vae, 
-        net=net, 
+        reference_unet=reference_unet,
+        denoising_unet=denoising_unet,
+        controlnext=controlnext,
         scheduler=scheduler,
         width=cfg.data.val_width,
         height=cfg.data.val_height,
     )
-    os.makedirs(cfg.output_dir, exist_ok=True)
+    os.makedirs(f"{cfg.output_dir}/{mode}", exist_ok=True)
     for sample_id, sample_dict in enumerate(sample_dicts):
         sample_name = sample_dict["name"]
         img = sample_dict["img"]
         with TemporaryDirectory() as temp_dir:
             os.makedirs(f"{temp_dir}", exist_ok=True)
-            out_file =f"{cfg.output_dir}/{sample_name}.png"
+            out_file =f"{cfg.output_dir}/{mode}/{sample_name}.png"
 
             img.save(out_file)
 if __name__ == "__main__":
     parser = argparse.ArgumentParser() 
-    parser.add_argument("--config", type=str, default="./configs/inference/stage1_adap.yaml")
+    parser.add_argument("--config", type=str, default="./configs/inference/stage1.yaml")
     parser.add_argument("--mode")
     args = parser.parse_args() 
     

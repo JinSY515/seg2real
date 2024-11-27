@@ -6,6 +6,7 @@ from einops import rearrange
 
 from .attention import BasicTransformerBlock
 import torch.nn.functional as F
+import copy
 
 # from diffusers.models.attention import BasicTransformerBlock, Attention
 # from src.utils.viz import save_in_colormap
@@ -171,6 +172,8 @@ class ReferenceAttentionControl:
                     )
                         
                     if do_classifier_free_guidance:
+                        # conditional_attn = self.attn1
+                        conditional_attn=copy.deepcopy(self.attn1)
                         hidden_states_c = hidden_states_uc.clone()
                         _uc_mask = uc_mask.clone()
                         if hidden_states.shape[0] != _uc_mask.shape[0]:
@@ -183,7 +186,7 @@ class ReferenceAttentionControl:
                                 .bool()
                             )
                         hidden_states_c[_uc_mask] = (
-                            self.attn1(
+                            conditional_attn(
                                 norm_hidden_states[_uc_mask],
                                 encoder_hidden_states=norm_hidden_states[_uc_mask],
                                 attention_mask=attention_mask,
@@ -283,7 +286,7 @@ class ReferenceAttentionControl:
             attn_modules = sorted(
                 attn_modules, key=lambda x: -x.norm1.normalized_shape[0]
             )
-            
+            # print(attn_modules)
             for i, module in enumerate(attn_modules):
                 module._original_inner_forward = module.forward
                 if isinstance(module, BasicTransformerBlock):

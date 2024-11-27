@@ -32,6 +32,7 @@ from src.dataset.real_seg_image_bdd import RealSegDataset
 from src.models.mutual_self_attention import ReferenceAttentionControl
 from src.models.unet_2d_condition import UNet2DConditionModel
 # from src.models.unet import UNet2DConditionModel
+# from diffusers.models.unets.unet_2d_condition import UNet2DConditionModel
 from src.models.controlnext import ControlNeXtModel
 # from src.pipelines.pipeline_pose2img import Pose2ImagePipeline
 from src.pipelines.pipeline_seg2real_controlnext import StableDiffusionControlNeXtPipeline as Pose2ImagePipeline
@@ -65,7 +66,10 @@ def load_safetensors(model, safetensors_path, strict=True, load_weight_increasem
             state_dict = load_file(safetensors_path)
         else:
             state_dict = torch.load(safetensors_path)
-        model.load_state_dict(state_dict, strict=strict)
+        pretrained_state_dict = model.state_dict()
+        for k in state_dict.keys():
+            pretrained_state_dict[k] = state_dict[k]
+        model.load_state_dict(pretrained_state_dict, strict=strict)
     else:
         if safetensors_path.endswith('.safetensors'):
             state_dict = load_file(safetensors_path)
@@ -105,21 +109,24 @@ class Net(nn.Module):
         uncond_fwd: bool = False,
         refined_seg_corr=None,
         guess_mode=False,
+        recon_ref=False
     ):
-        ref_controlnext_output = self.controlnext(ref_seg_img, ref_timesteps)
+        with torch.no_grad():
+            ref_controlnext_output = self.controlnext(ref_seg_img, ref_timesteps)
         
-        out = self.reference_unet(
+        ref_model_pred = self.reference_unet(
             ref_image_latents,
             ref_timesteps,
             encoder_hidden_states= seg_text_prompt_embeds, #ref_text_prompt_embeds,
             conditional_controls=ref_controlnext_output,
             return_dict=False,
-        )
+        )[0]
 
         self.reference_control_reader.update(self.reference_control_writer)
         
-        den_controlnext_output = self.controlnext(content_img, timesteps)
-        
+        with torch.no_grad():
+            den_controlnext_output = self.controlnext(content_img, timesteps)
+
         model_pred = self.denoising_unet(
             noisy_latents,
             timesteps,
@@ -130,7 +137,10 @@ class Net(nn.Module):
         del seg_text_prompt_embeds, ref_text_prompt_embeds
         gc.collect()
         torch.cuda.empty_cache()
-        return model_pred
+        if recon_ref:
+            return model_pred, ref_model_pred
+        else:
+            return model_pred
 
 
 def compute_snr(noise_scheduler, timesteps):
@@ -162,16 +172,18 @@ def compute_snr(noise_scheduler, timesteps):
     snr = (alpha / sigma) ** 2
     return snr
 
-def set_up_match_attn_processor_(blocks):
-    for m in torch_dfs(blocks):
-        if isinstance(m, BasicTransformerBlock):
-            embed_dim = 32 
-            processor = MatchAttnProcessor(
-                embed_dim=embed_dim,
-                hidden_size=m.attn1.to_q.out_features,
-            )
-            processor.requires_grad_(True)
-            m.attn1.processor = processor 
+def set_up_match_attn_processor_(blocks, block_type="down"):
+    blocks_ = [m for m in torch_dfs(blocks) if isinstance(m,BasicTransformerBlock)]
+    for idx, m in enumerate(blocks_):
+        if block_type == "down" and idx == 0:
+            continue
+        embed_dim = 32 
+        processor = MatchAttnProcessor(
+            embed_dim=embed_dim,
+            hidden_size=m.attn1.to_q.out_features,
+        )
+        processor.requires_grad_(True)
+        m.attn1.processor = processor 
 
 def set_up_lora_attn_processor_(unet, blocks, fuse_block="down"):
     blocks = [m for m in torch_dfs(blocks) if isinstance(m,BasicTransformerBlock)]
@@ -232,16 +244,16 @@ def set_up_match_attn_processor(unet, fusion_blocks):
     scale_idx=0
     
     if fusion_blocks == "full":
-        set_up_match_attn_processor_(unet.down_blocks)
-        set_up_match_attn_processor_(unet.mid_block)
-        set_up_match_attn_processor_(unet.up_blocks)
+        set_up_match_attn_processor_(unet.down_blocks, block_type="down")
+        set_up_match_attn_processor_(unet.mid_block, block_type="mid")
+        set_up_match_attn_processor_(unet.up_blocks, block_type="up")
     elif fusion_blocks == "midup":
-        set_up_match_attn_processor_(unet.mid_block)
-        set_up_match_attn_processor_(unet.up_blocks)
+        set_up_match_attn_processor_(unet.mid_block, block_type="mid")
+        set_up_match_attn_processor_(unet.up_blocks, block_type="up")
     elif fusion_blocks == "down":
-        set_up_match_attn_processor_(unet.down_blocks)
+        set_up_match_attn_processor_(unet.down_blocks, block_type="down")
     elif fusion_blocks == "up":
-        set_up_match_attn_processor_(unet.up_blocks)
+        set_up_match_attn_processor_(unet.up_blocks, block_type="up")
     
 
 def log_validation(
@@ -306,7 +318,7 @@ def log_validation(
             #     generator=generator,
             # ).images
             image = pipe(
-                prompt="A photo of a real driving scene",
+                prompt="A photo of a <sks> driving scene",
                 ref_image=ref_image_pil,
                 ref_seg_image=ref_seg_pil,
                 tgt_seg_image=pose_image_pil,
@@ -406,19 +418,46 @@ def main(cfg):
     )
     sched_kwargs_val.update({"beta_schedule": "scaled_linear"})
     # val_noise_scheduler = DDIMScheduler(**sched_kwargs)
-    val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs_val)
-
+    # val_noise_scheduler = UniPCMultistepScheduler(**sched_kwargs_val)
+    val_noise_scheduler_config = {'num_train_timesteps': 1000, 
+                        'beta_start': 0.00085, 
+                        'beta_end': 0.012, 
+                        'beta_schedule': 'scaled_linear', 
+                        'trained_betas': None, 
+                        'solver_order': 2, 
+                        'prediction_type': 'epsilon', 
+                        'thresholding': False,
+                        'dynamic_thresholding_ratio': 0.995, 
+                        'sample_max_value': 1.0, 
+                        'predict_x0': True, 
+                        'solver_type': 'bh2', 
+                        'lower_order_final': True, 
+                        'disable_corrector': [], 
+                        'solver_p': None, 
+                        'use_karras_sigmas': False, 
+                        'use_exponential_sigmas': False, 
+                        'use_beta_sigmas': False, 
+                        'timestep_spacing': 'linspace', 
+                        'steps_offset': 1, 
+                        'final_sigmas_type': 'zero', 
+                        '_use_default_values': ['prediction_type', 'disable_corrector', 'use_beta_sigmas', 'solver_p', 'sample_max_value', 'use_exponential_sigmas', 'use_karras_sigmas', 'predict_x0', 'timestep_spacing', 'lower_order_final', 'thresholding', 'rescale_betas_zero_snr', 'dynamic_thresholding_ratio', 'solver_order', 'solver_type', 'final_sigmas_type'],
+                        'skip_prk_steps': True, 
+                        'set_alpha_to_one': False, 
+                        '_class_name': 'UniPCMultistepScheduler', 
+                        '_diffusers_version': '0.6.0', 
+                        'clip_sample': False}
+    val_noise_scheduler =  UniPCMultistepScheduler.from_config(val_noise_scheduler_config)
     sched_kwargs_train.update({"beta_schedule": "scaled_linear"})
     sched_kwargs_train.update(
         clip_sample=False
     )
-    # train_noise_scheduler = DDIMScheduler(**sched_kwargs)
-    train_noise_scheduler = DDPMScheduler(**sched_kwargs_train)
-    vae = AutoencoderKL.from_pretrained(cfg.vae_model_path).to(
+    train_noise_scheduler = DDIMScheduler(**sched_kwargs_train)
+    # train_noise_scheduler = DDPMScheduler.from_pretrained(cfg.pretrained_model_name_or_path, subfolder="scheduler")
+    vae = AutoencoderKL.from_pretrained(cfg.vae_model_path, subfolder="vae").to(
         "cuda", dtype=weight_dtype
     )
-    tokenizer = CLIPTokenizer.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="tokenizer")
-    text_encoder = CLIPTextModel.from_pretrained("runwayml/stable-diffusion-v1-5", subfolder="text_encoder").to(device="cuda")
+    tokenizer = CLIPTokenizer.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5", subfolder="tokenizer")
+    text_encoder = CLIPTextModel.from_pretrained("stable-diffusion-v1-5/stable-diffusion-v1-5", subfolder="text_encoder").to(device="cuda")
     reference_unet = UNet2DConditionModel.from_pretrained(
         cfg.base_model_path,
         subfolder="unet",
@@ -429,8 +468,8 @@ def main(cfg):
     )
     controlnext = ControlNeXtModel(controlnext_scale=cfg.controlnext_scale)    
     if cfg.pretrained_unet_path is not None:
-        load_safetensors(reference_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=True)
-        load_safetensors(denoising_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=True)
+        load_safetensors(reference_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=False)
+        load_safetensors(denoising_unet, cfg.pretrained_unet_path, strict=True, load_weight_increasement=False)
     if cfg.controlnext_path is not None:
         load_safetensors(controlnext, cfg.controlnext_path, strict=True)
     denoising_unet.to(device="cuda")
@@ -455,13 +494,13 @@ def main(cfg):
         reference_unet,
         do_classifier_free_guidance=False,
         mode="write",
-        fusion_blocks="midup",
+        fusion_blocks="full",
     )
     reference_control_reader = ReferenceAttentionControl(
         denoising_unet,
         do_classifier_free_guidance=False,
         mode="read",
-        fusion_blocks="midup",
+        fusion_blocks="full",
     )
 
     
@@ -471,7 +510,7 @@ def main(cfg):
     controlnext.enable_xformers_memory_efficient_attention()
     # import pdb; pdb.set_trace()
     if cfg.train_mode.train_matching_module:
-        set_up_match_attn_processor(denoising_unet, fusion_blocks="midup")
+        set_up_match_attn_processor(denoising_unet, fusion_blocks="full")
 
     
     if cfg.solver.gradient_checkpointing:
@@ -482,7 +521,15 @@ def main(cfg):
     if cfg.train_mode.train_denoising:
         denoising_unet.requires_grad_(True)
     else:
-        denoising_unet.requires_grad_(False)
+        if cfg.train_mode.train_denoising_sa:
+            for name, param in denoising_unet.named_parameters():
+                if "attn1." in name:
+                    param.requires_grad_(True)
+                else:
+                    param.requires_grad_(False)
+        else:
+            denoising_unet.requires_grad_(False)
+        # denoising_unet.requires_grad_(False)
         # for name, param in denoising_unet.named_parameters():
         #     if "attn1." in name:
         #         param.requires_grad_(True)
@@ -492,6 +539,18 @@ def main(cfg):
         reference_unet.requires_grad_(True)
     else:
         reference_unet.requires_grad_(False)
+        # for name, param in reference_unet.named_parameters():
+        #     if "attn1." in name:
+        #         param.requires_grad_(True)
+        #     else:
+        #         param.requires_grad_(False)
+    
+    if cfg.train_mode.train_semantic_sa:
+        for name, param in denoising_unet.named_parameters():
+            if "attn1." in name:
+                param.requires_grad_(True)
+            else:
+                param.requires_grad_(False)
     controlnext.requires_grad_(False)
     controlnext.train()
     reference_unet.train()
@@ -499,7 +558,7 @@ def main(cfg):
     matcher.train()
 
     if cfg.train_mode.train_semantic_lora:
-        set_up_lora_attn_processor(reference_unet, fusion_blocks="midup")
+        set_up_lora_attn_processor(reference_unet, fusion_blocks="full")
     net = Net(
         reference_unet,
         denoising_unet,
@@ -704,10 +763,22 @@ def main(cfg):
                 ref_seg_img_resized = F.interpolate(ref_seg_img, size=(32, 32), mode="bilinear", align_corners=False)
                 
                 seg_corr = []
+                seg_corr_rev = []
                 for b in range(cfg.data.train_bs):
                     seg_corr_ = (tgt_seg_img_resized[b, :, :, :, None, None] == ref_seg_img_resized[b, :, None, None, :, :]).all(dim=0)
                     seg_corr.append(seg_corr_)
                 seg_corr = torch.stack(seg_corr)
+
+                # for b in range(cfg.data.train_bs):
+                #     seg_corr_ = (ref_seg_img_resized[b, :, :, :, None, None] == tgt_seg_img_resized[b, :, None, None, :, :]).all(dim=0)
+                #     seg_corr_rev.append(seg_corr_)
+                # seg_corr_rev = torch.stack(seg_corr_rev)
+
+                # count_of_ones = torch.sum(seg_corr, dim=(0, 1))  # (32, 32) 텐서 생성
+                # count_of_ones = torch.sum(count_of_ones == 1)  # 1인 요소의 개수 계산
+                # sum_last_two_dims = torch.sum(seg_corr, dim=(2, 3))  # (32, 32) 크기의 텐서 생성
+                # count_of_ones_2 = torch.sum(sum_last_two_dims == 1)  # 1인 요소의 개수 계산
+
                 # refined_seg_corr = matcher(seg_corr.unsqueeze(1).float().cpu())
                 # refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1], 32 * 32, 32 * 32)
                 if cfg.data.cond_mode == "multi_canny":
@@ -732,7 +803,6 @@ def main(cfg):
                             batch["ref_seg_image_name"]
                         )
                     ):
-                
                         
                         with open(seg_json_name, "r") as f:
                             seg_json_data = json.load(f)
@@ -742,9 +812,9 @@ def main(cfg):
                             ref_object_names = seg_json_data[ref_seg_image_name.split("/")[-1]]
                           
                         
-                        seg_instance_prompt = "A photo of driving scene"
-                        for object in tgt_object_names:
-                            seg_instance_prompt += f" {object},"
+                        seg_instance_prompt = "A photo of <sks> driving scene"
+                        # for object in tgt_object_names:
+                        #     seg_instance_prompt += f" {object},"
                         seg_text_inputs = tokenizer(
                             seg_instance_prompt,
                             truncation=True,
@@ -757,9 +827,9 @@ def main(cfg):
                         seg_text_embeds_list.append(seg_text_embeds)
 
                         
-                        ref_instance_prompt="A photo of driving scene"
-                        for object in ref_object_names:
-                            ref_instance_prompt += f" {object},"
+                        ref_instance_prompt="A photo of <sks> driving scene"
+                        # for object in ref_object_names:
+                        #     ref_instance_prompt += f" {object},"
                         ref_text_inputs = tokenizer(
                             ref_instance_prompt,
                             truncation=True,
@@ -798,6 +868,17 @@ def main(cfg):
                         f"Unknown prediction type {train_noise_scheduler.prediction_type}"
                     )
                 
+                if train_noise_scheduler.prediction_type=="epsilon":
+                    ref_target =  ref_noise 
+                elif train_noise_scheduler.prediction_type =="v_prediction":
+                    ref_target = train_noise_scheduler.get_velocity(
+                        ref_latents, ref_noise, ref_timesteps
+                    )
+                else:
+                    raise ValueError(
+                        f"Unknown prediction type {train_noise_scheduler.prediction_type}"
+                    )                
+                # import pdb; pdb.set_trace()
                 # with torch.no_grad():
                 # refined_seg_corr = matcher(seg_corr.unsqueeze(1).float())
                 # refined_seg_corr = refined_seg_corr.view(refined_seg_corr.shape[0], refined_seg_corr.shape[1], 32 * 32, 32 * 32)
@@ -808,31 +889,53 @@ def main(cfg):
                     if "attn1." in n and p is not None:
                         p.matcher = matcher
                         p.seg_corr = seg_corr
-                        # p.pred_residual = refined_seg_corr
-                        p.is_train=True
-                
-                model_pred = net(
-                    noisy_latents,
-                    timesteps,
-                    noisy_ref_latents,
-                    ref_timesteps,
-                    ref_seg_img,
-                    seg_text_prompt_embeds,
-                    ref_text_prompt_embeds,
-                    content_img, 
-                    seg_corr,
-                    uncond_fwd,
-                )
-               
-                # attn_maps = [p.attn_map for n, p in net.denoising_unet.attn_processors.items() if "attn1." in n]
-                # for attn in attn_maps:
-                #     attn_size = attn.shape[-1]
-                #     refined_seg_corr_resized = F.interpolate(refined_seg_corr, size=(attn_size // 2, attn_size // 2), mode='bilinear', align_corners=False)
-                #     attn[:,:,:, attn_size//2:] = attn[:,:,:,attn_size//2:] + refined_seg_corr_resized.to(device=attn.device)
+                        p.hard_corr = False
+                        # p.timestep = timesteps
+                        p.blocks = n.split(".")[0]
+                # import pdb; pdb.set_trace()
+                # net.reference_control_reader.do_classifier_free_guidance=False 
+                # net.reference_control_writer.do_classifier_free_guidance=False   
+
+                if cfg.train_mode.recon_reference:
+                    model_pred, ref_model_pred = net(
+                        noisy_latents,
+                        timesteps,
+                        noisy_ref_latents, 
+                        ref_timesteps,
+                        ref_seg_img, 
+                        seg_text_prompt_embeds,
+                        ref_text_prompt_embeds,
+                        content_img, 
+                        seg_corr,
+                        uncond_fwd,
+                        recon_ref=True
+                    )             
+                else:
+                    model_pred = net(
+                        noisy_latents,
+                        timesteps,
+                        noisy_ref_latents,
+                        ref_timesteps,
+                        ref_seg_img,
+                        seg_text_prompt_embeds,
+                        ref_text_prompt_embeds,
+                        content_img, 
+                        seg_corr,
+                        uncond_fwd,
+                        recon_ref=False
+                    )
                 
                 del seg_text_prompt_embeds, ref_text_prompt_embeds
                 torch.cuda.empty_cache()
                 if cfg.snr_gamma == 0:
+                    # if cfg.train_mode.recon_ref:
+                    #     loss = F.mse_loss(
+                    #         model_pred.float(), target.float(), reduction="mean"
+                    #     ) 
+                    #     + F.mse_loss(
+                    #         ref_model_pred.float(), ref_target.float(), reduction="mean"
+                    #     )
+                    # else:
                     loss = F.mse_loss(
                         model_pred.float(), target.float(), reduction="mean"
                     )
@@ -855,17 +958,20 @@ def main(cfg):
                         * mse_loss_weights
                     )
                     loss = loss.mean()
-                # print(torch.isnan(model_pred))
 
                 # Gather the losses across all processes for logging (if we use distributed training).
                 avg_loss = accelerator.gather(loss.repeat(cfg.data.train_bs)).mean()
                 train_loss += avg_loss.item() / cfg.solver.gradient_accumulation_steps
 
+                # recon_loss1 = + F.mse_loss(
+                #             ref_model_pred.float(), ref_target.float(), reduction="mean"
+                #         )
+                # accelerator.backward(recon_loss1)
                 # Backpropagate
                 accelerator.backward(loss) #, retain_graph=True)
-                for n, p in matcher.named_parameters():
-                    if 'encoders.conv4d.0.0.query_conv.weight' in n:
-                        print(p)
+                # for n, p in matcher.named_parameters():
+                #     if 'encoders.conv4d.0.0.query_conv.weight' in n:
+                #         print(p)
                 if accelerator.sync_gradients:
                     accelerator.clip_grad_norm_(
                         trainable_params,
@@ -915,7 +1021,35 @@ def main(cfg):
                                 out_file =f"{cfg.output_dir}/stage1/{global_step:06d}-{sample_name}.png"
 
                                 img.save(out_file)
-
+                        unwrap_net = accelerator.unwrap_model(net)
+                        save_checkpoint(
+                            unwrap_net.reference_unet,
+                            save_dir,
+                            "reference_unet",
+                            global_step,
+                            total_limit=1,
+                        )
+                        save_checkpoint(
+                            unwrap_net.denoising_unet,
+                            save_dir,
+                            "denoising_unet",
+                            global_step,
+                            total_limit=1,
+                        )
+                        # save_checkpoint(
+                        #     unwrap_net.controlnext,
+                        #     save_dir,
+                        #     "controlnext",
+                        #     global_step,
+                        #     total_limit=1,
+                        # )
+                        # save_checkpoint(
+                        #     matcher,
+                        #     save_dir,
+                        #     "matcher",
+                        #     global_step,
+                        #     total_limit=3,
+                        # )
             logs = {
                 "step_loss": loss.detach().item(),
                 "lr": lr_scheduler.get_last_lr()[0],
@@ -926,31 +1060,38 @@ def main(cfg):
                 break
 
         # save model after each epoch
-        if (
-            epoch + 1
-        ) % (cfg.save_model_epoch_interval) == 0 and accelerator.is_main_process:
-            unwrap_net = accelerator.unwrap_model(net)
-            save_checkpoint(
-                unwrap_net.reference_unet,
-                save_dir,
-                "reference_unet",
-                global_step,
-                total_limit=1,
-            )
-            save_checkpoint(
-                unwrap_net.denoising_unet,
-                save_dir,
-                "denoising_unet",
-                global_step,
-                total_limit=1,
-            )
-            save_checkpoint(
-                unwrap_net.controlnext,
-                save_dir,
-                "controlnext",
-                global_step,
-                total_limit=1,
-            )
+        # if (
+        #     epoch + 1
+        # ) % (cfg.save_model_epoch_interval) == 0 and accelerator.is_main_process:
+        #     unwrap_net = accelerator.unwrap_model(net)
+        #     save_checkpoint(
+        #         unwrap_net.reference_unet,
+        #         save_dir,
+        #         "reference_unet",
+        #         global_step,
+        #         total_limit=1,
+        #     )
+        #     save_checkpoint(
+        #         unwrap_net.denoising_unet,
+        #         save_dir,
+        #         "denoising_unet",
+        #         global_step,
+        #         total_limit=1,
+        #     )
+        #     save_checkpoint(
+        #         unwrap_net.controlnext,
+        #         save_dir,
+        #         "controlnext",
+        #         global_step,
+        #         total_limit=1,
+        #     )
+        #     save_checkpoint(
+        #         matcher,
+        #         save_dir,
+        #         "matcher",
+        #         global_step,
+        #         total_limit=1,
+        #     )
 
     # Create the pipeline using the trained modules and save it.
     accelerator.wait_for_everyone()
